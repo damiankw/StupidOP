@@ -1,6 +1,6 @@
 bind pub - $sb(cmd)help pub:help
 bind pub - $sb(cmd)commands pub:commands
-bind pub - $sb(cmd)gamble pub:gamble
+bind pub - $sb(cmd)slots pub:slots
 bind pub - $sb(cmd)cash pub:cash
 bind pub - $sb(cmd)bank pub:bank
 bind pub - $sb(cmd)rob pub:rob
@@ -15,18 +15,21 @@ proc pub:help {nick uhost handle chan text} {
   set cmd [string trim [string tolower [lindex $text 0]] .]
   if {[lindex $text 0] == ""} {
     notice $nick "*** Commands List for StupidOP ***"
-    notice $nick ".gamble : Gamble on the pokies"
-    notice $nick ".cash   : See how much cash you/someone else has"
-    notice $nick ".rob    : Rob another players cash"
-    notice $nick ".seen   : Check when a user was last seen"
-    notice $nick ".top    : Check the top statistics"
-    notice $nick ".random : Say a random line of a user"
+    notice $nick ".slots    : Gamble on the pokies"
+    notice $nick ".cash     : See how much cash you/someone else has"
+    notice $nick ".rob      : Rob another players cash"
+    notice $nick ".jackpot  : View the Jackpot statistics."
+    notice $nick ".bank     : Put money in the bank."
+    notice $nick ".withdraw : Put money in your wallet."
+    notice $nick ".seen     : Check when a user was last seen"
+    notice $nick ".top      : Check the top statistics"
+    notice $nick ".random   : Say a random line of a user"
     notice $nick "For more information on any command, visit https://stupid.nictitate.net/ or use: .help <command>"
     notice $nick "*** End of List ***"
-  } elseif {$cmd == "gamble"} {
-    notice $nick "Usage: .gamble"
+  } elseif {$cmd == "slots"} {
+    notice $nick "Usage: .slots"
     notice $nick "     - Runs the pokies for \$1.00 and gives you the change to in the JACKPOT!"
-    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?gamble"
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?slots"
   } elseif {$cmd == "cash"} {
     notice $nick "Usage: .cash \[<nick>\]"
     notice $nick "     - Shows the current cash for the player (or yourself if no player is specified)"
@@ -74,7 +77,7 @@ proc pub:commands {nick uhost handle chan text} {
   pub:help $nick $uhost $handle $chan $text
 }
 
-proc pub:gamble {nick uhost handle chan text} {
+proc pub:slots {nick uhost handle chan text} {
   global slot_items
   
   # configure the player defaults if they don't already exist
@@ -92,7 +95,7 @@ proc pub:gamble {nick uhost handle chan text} {
     set item(3) $slot_items([lindex [array names slot_items] [rand [llength [array names slot_items]]]])
 
     # set the start message
-    set msg "1,10 ! 1,5 ! 1,6 G 1,9 A 0,4 M 0,1 B 1,11 L 1,7 E 4,3 ! 1,8 !  ::: \[\$[slog_get jackpot].00\] ::: \[ $item(1) | $item(2) | $item(3) \] :::"
+    set msg "1,10 ! 1,5 ! 1,6 P 1,9 O 0,4 K 0,1 I 1,11 E 1,7 S 4,3 ! 1,8 !  ::: \[\$[slot_get jackpot].00\] ::: \[ $item(1) | $item(2) | $item(3) \] :::"
 
     # it costs $1
     slot_player_incr $nick spent 1
@@ -100,7 +103,7 @@ proc pub:gamble {nick uhost handle chan text} {
 
     if {($item(1) == $item(2)) && ($item(2) == $item(3))} {
       # we have a winner!
-      set msg "$msg 0 1,8 J 1,4 A 1,9 C 1,7 K 1,13 P 1,11 O 1,5 T    !!! $nick just won [slot_get jackpot] points!!!"
+      set msg "$msg 0 1,8 J 1,4 A 1,9 C 1,7 K 1,13 P 1,11 O 1,5 T    !!! $nick just won \$[slot_get jackpot].00!!!"
       slot_incr total.winners
       slot_incr total.jackpot [slot_get jackpot]
       slot_player_incr $nick won [slot_get jackpot]
@@ -146,11 +149,11 @@ proc pub:profile {nick uhost handle chan text} {
     set user [lindex $text 0]
   }
   
-  notice $nick "*** Player Information for $user ***"
-  notice $nick "In-Wallet : \$[align [slot_player_get $user wallet].00 15] | In-Bank   : \$[slot_player_get $user bank].00"
-  notice $nick "Spent     : \$[align [slot_player_get $user spent].00 15] | Won       : \$[slot_player_get $user won].00"
-  notice $nick "Lost      : \$[align [slot_player_get $user lost].00 15] | Stolen    : \$[slot_player_get $user stolen].00"
-  notice $nick "*** End of List ***"
+  notice $nick "|[align " Player Information for $user " 62 "-" C]|"
+  notice $nick "| In-Wallet : \$[align [slot_player_get $user wallet].00 15] | In-Bank   : \$[align [slot_player_get $user bank].00 15] |"
+  notice $nick "| Spent     : \$[align [slot_player_get $user spent].00 15] | Won       : \$[align [slot_player_get $user won].00 15] |"
+  notice $nick "| Lost      : \$[align [slot_player_get $user lost].00 15] | Stolen    : \$[align [slot_player_get $user stolen].00 15] |"
+  notice $nick "|[align "" 61 "-"]|"
 }
 
 proc pub:withdraw {nick uhost handle chan text} {
