@@ -253,6 +253,16 @@ proc slot_get {item} {
   return $slot([string tolower $item])
 }
 
+proc slot_flood_check {nick} {
+  # only do one command every 4 seconds
+  if {[expr [clock seconds] - [slot_player_get $nick flood]] <= 5} {
+    return 1
+  } else {
+    slot_player_set $nick flood [clock seconds]
+    return 0
+  }
+}
+
 slot_check
 
 stupid_autosave

@@ -1,7 +1,10 @@
 bind pub - $sb(cmd)help pub:help
-bind pub - $sb(cmd)commands pub:commands
+bind pub - $sb(cmd)rtfm pub:help
+bind pub - $sb(cmd)man pub:help
+bind pub - $sb(cmd)commands pub:help
 bind pub - $sb(cmd)spin pub:spin
 bind pub - $sb(cmd)roll pub:roll
+bind pub - $sb(cmd)throw pub:throw
 bind pub - $sb(cmd)cash pub:cash
 bind pub - $sb(cmd)bank pub:bank
 bind pub - $sb(cmd)rob pub:rob
@@ -82,7 +85,9 @@ proc pub:commands {nick uhost handle chan text} {
 proc pub:roll {nick uhost handle chan text} {
   slot_player_check $nick
   
-  if {[slot_funds_check $nick 1] == -1} {
+  if {[slot_flood_check $nick]} {
+    notice $nick "You can't play again for another [expr [slot_player_get $nick flood] + 5 - [clock seconds]] seconds."
+  } elseif {[slot_funds_check $nick 1] == -1} {
     notice $nick "You don't have enough funds in your wallet for this, please withdraw from the bank!"
   } elseif {[slot_funds_check $nick 1] == 0} {
     notice $nick "You don't have enough funds in your wallet or in the bank for this, go raise some cash!"
@@ -109,7 +114,7 @@ proc pub:roll {nick uhost handle chan text} {
       set slang "SNAKE EYES"
     } elseif {($item(1) == $item(2)) && ($item(1) == 2)} {
       set win 5
-      set sland "HARD FOUR"
+      set slang "HARD FOUR"
     } elseif {($item(1) == $item(2)) && ($item(1) == 3)} {
       set win 10
       set slang "HARD SIX"
@@ -140,6 +145,63 @@ proc pub:roll {nick uhost handle chan text} {
   }
 }
 
+proc pub:throw {nick uhost handle chan text} {
+  slot_player_check $nick
+  
+  if {[slot_flood_check $nick]} {
+    notice $nick "You can't play again for another [expr [slot_player_get $nick flood] + 5 - [clock seconds]] seconds."
+  } elseif {[slot_funds_check $nick 1] == -1} {
+    notice $nick "You don't have enough funds in your wallet for this, please withdraw from the bank!"
+  } elseif {[slot_funds_check $nick 1] == 0} {
+    notice $nick "You don't have enough funds in your wallet or in the bank for this, go raise some cash!"
+  } else {
+    slot_player_incr $nick spent 1
+    slot_player_decr $nick wallet 1
+    
+    set item(1) [rand 2]
+    set item(2) [rand 2]
+    
+    if {$item(1)} {
+      set item(1.1) "8,9 HEADS "
+    } else {
+      set item(1.1) "9,8 TAILS "
+    }
+    
+    if {$item(2)} {
+      set item(2.2) "8,9 HEADS "
+    } else {
+      set item(2.2) "9,8 TAILS "
+    }
+    
+    set win 0
+    set slang ""
+    set msg "8,9 ! 9,8 ! 8,9 T 9,8 W 8,9 O 9,8 - 8,9 U 9,8 P 8,9 ! 9,8 !  ::: \[ $item(1.1) | $item(2.2) \] ::: "
+    
+    if {($item(1) == $item(2)) && ($item(1) == 1)} {
+      set win 20
+      msg $chan "$msg $nick won \$20.00!! HEADS!!!"
+      slot_incr total.winners
+      slot_incr total.jackpot $win
+      slot_set last.winner $nick
+      slot_set last.jackpot $win
+    } elseif {($item(1) == $item(2)) && ($item(1) == 0)} {
+      set win 0
+      msg $chan "$msg TAILS!! $nick lost!!"
+    } else {
+      set win 1
+      msg $chan "$msg ODDS!! $nick plays again!"
+      set slang "ODDS"
+    }
+    
+    if {$win == 0} {
+      set msg "$msg $nick lost! $slang"
+    } else {
+      slot_player_incr $nick won $win
+      slot_player_incr $nick wallet $win
+    }
+  }
+}
+
 proc pub:spin {nick uhost handle chan text} {
   global slot_items
   
@@ -147,7 +209,9 @@ proc pub:spin {nick uhost handle chan text} {
   slot_player_check $nick
   
   # check if the user has money to play
-  if {[slot_funds_check $nick 1] == -1} {
+  if {[slot_flood_check $nick]} {
+    notice $nick "You can't play again for another [expr [slot_player_get $nick flood] + 5 - [clock seconds]] seconds."
+  } elseif {[slot_funds_check $nick 1] == -1} {
     notice $nick "You don't have enough funds in your wallet for this, please withdraw from the bank!"
   } elseif {[slot_funds_check $nick 1] == 0} {
     notice $nick "You don't have enough funds in your wallet or in the bank for this, go raise some cash!"
