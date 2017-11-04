@@ -116,19 +116,6 @@ proc seen_get {item} {
   return "[lindex [split $item ","] 0] $seen($item)"
 }
 
-# load the seen database if it exists
-if {![array exists seen] && [file exists "seen.dat"]} {
-  putlog ".. loading SEEN internal database (seen.dat)."
-  source seen.dat
-}
-
-# load the slot database if it exists
-if {![array exists slot] && [file exists "slot.dat"]} {
-  putlog ".. loading SLOT internal database (slot.dat)."
-  source slot.dat
-}
-
-
 proc slot_check {} {
   global slot
   # go through the current robberies and see if any have expired
@@ -227,6 +214,12 @@ proc slot_player_decr {user item {value 1}} {
   incr slot([string tolower $user],$item) -$value
 }
 
+# delete a player
+proc slot_player_del {nick} {
+  global slot
+  array unset slot [string tolower $nick],*
+}
+
 proc slot_incr {item {value 1}} {
   global slot
   
@@ -261,6 +254,87 @@ proc slot_flood_check {nick} {
     slot_player_set $nick flood [clock seconds]
     return 0
   }
+}
+
+proc slot_rank_get {} {
+  # get the wallet+bank
+  global slot
+  foreach item [array names slot *,wallet] {
+    set total([lindex [split $item ,] 0]) [expr [slot_player_get [lindex [split $item ,] 0] wallet] + [slot_player_get [lindex [split $item ,] 0] bank]]
+  }
+  
+  set rank [array_sort [array get total]]
+  
+  return $rank
+}
+
+proc array_sort {items} {
+  set sort [lsort -decreasing -integer -stride 2 -index 1 $items]
+  
+  set cnt 1
+  set list ""
+  foreach item $sort {
+    if {[expr $cnt % 2]} {
+      set list "$list $item"
+    }
+    
+    incr cnt 1
+  }
+  
+  return [string trim $list]
+}
+
+proc seen_top_text {text user_list {limit 10}} {
+  array set users $user_list
+  set top ""
+  set cnt 1
+  foreach item $text {
+    if {[expr $cnt % 2]} {
+      set top "$top $users($item):\[[lindex $text $cnt]\]"
+    }
+    if {$cnt >= [expr $limit * 2]} {
+      break
+    }
+    
+    incr cnt
+  }
+  
+  return [string trim $top]
+}
+
+
+# displays all of the active theft/rob attempts
+proc slot_steal_get {{nick *}} {
+ global slot
+ set list ""
+ foreach item [array names slot *,steal] {
+   if {($slot($item) != 0) && ([string match [string tolower $nick] [string tolower [lindex $slot($item) 2]]])} {
+     set list "$list {$slot($item)}"
+   }
+ }
+ 
+ return [string trim $list]
+}
+
+# load the seen database if it exists
+if {![array exists seen] && [file exists "seen.dat"]} {
+  putlog ".. loading SEEN internal database (seen.dat)."
+  source seen.dat
+}
+
+# load the slot database if it exists
+if {![array exists slot] && [file exists "slot.dat"]} {
+  putlog ".. loading SLOT internal database (slot.dat)."
+  source slot.dat
+}
+
+
+if {![info exists slot(jackpot)]} {
+  set slot(jackpot) [rand 200]
+  set slot(total.winners) 0
+  set slot(total.jackpot) 0
+  set slot(last.winner) "n/a"
+  set slot(last.jackpot) "0"
 }
 
 slot_check

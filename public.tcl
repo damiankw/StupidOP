@@ -11,7 +11,111 @@ bind pub - $sb(cmd)rob pub:rob
 bind pub - $sb(cmd)jackpot pub:jackpot
 bind pub - $sb(cmd)withdraw pub:withdraw
 bind pub - $sb(cmd)profile pub:profile
+bind pub - $sb(cmd)police pub:police
+bind pub - $sb(cmd)rank pub:rank
+bind pub n $sb(cmd)give pub:give
+bind pub n $sb(cmd)merge pub:merge
 bind pubm - * slot:pubm
+
+proc pub:rank {nick uhost handle chan text} {
+  # .rank [<nick>] [-<top x|level x|limit x|list>]
+  # ./ -top x = shows top x
+  # -level x = shows user at position x
+  # ./ -limit x = ???
+  # -list = shows the list around the match
+  array set search [checkswitch $text "top 1 limit 1 level 1" "top 0 level 0 limit 10 list 0"]
+
+  if {$search(top) > 0} {
+    set user *
+  } elseif {[lindex $search(text) 0] == ""} {
+    set user $nick
+  } else {
+    set user [lindex $search(text) 0]
+  }
+  
+  set rank_list [slot_rank_get]
+  
+  set user_rank [lsearch $rank_list $user]
+  
+  if {($user_rank == -1) && ($user != "*")} {
+    notice $nick "$user was not found in the database."
+  } elseif {$user != "*" && (!$search(list))} {
+    notice $nick "Found [lindex $search(text) 0] ranked #[expr $user_rank + 1] with \$[expr [slot_player_get [lindex $search(text) 0] wallet] + [slot_player_get [lindex $search(text) 0] bank]].00."
+  } else {
+    if {$search(top) > 20} {
+      set start 0
+      set end 19
+    } elseif {$search(top) > 0} {
+      set start 0
+      set end [expr $search(top) - 1]
+    } elseif {$user_rank < 5} {
+      set start 0
+      set end 9
+    } elseif {$user_rank > [expr [llength $rank_list] - 6]} {
+      set start [expr [llength $rank_list] - 10]
+      set end [expr [llength $rank_list] - 1]
+    } elseif {$user_rank >= 5} {
+      set start [expr $user_rank - 4]
+      set end [expr $user_rank + 5]
+    }
+
+    set cnt $start
+    set total 0
+
+    notice $nick "*** Listing Ranks \[Match: $user\] of [llength $rank_list] entries ***"
+    notice $nick "      NickName                     Wallet            Bank           Total"
+    while {($cnt <= $end)} {
+      set luser [lindex $rank_list $cnt]
+      set ltotal [expr [slot_player_get $luser wallet] + [slot_player_get $luser bank]]
+      if {[string tolower $luser] == [string tolower $user]} {
+        set highlight "9,1"
+      } else {
+        set highlight ""
+      }
+
+      notice $nick "$highlight[align [expr $cnt + 1] 5] [align $luser 19] [align \$[slot_player_get $luser wallet].00 15 " " R ] [align \$[slot_player_get $luser bank].00 15 " " R ] [align \$$ltotal.00 15 " " R ]"
+
+      incr cnt
+      incr total
+    }
+    notice $nick "*** End of List ***"
+  }
+}
+
+proc pub:give {nick uhost handle chan text} {
+  # .give <player> <amount> - gives the player a boost in their wallet
+  if {[lindex $text 1] == ""} {
+    set cash 100
+  } else {
+    set cash [string trim [lindex [split [lindex $text 1] .] 0] "\$"]
+  }
+
+  if {[lindex $text 0] == ""} {
+    notice $nick "You need to tell me who to give cash to."
+  } elseif {$cash <= 0} {
+    notice $nick "You have to at least give \$1.00."
+  } elseif {![isnum [string trim $cash "\$"]]} {
+    notice $nick "You need to provide a number/currency."
+  } else {
+    slot_player_incr [lindex $text 0] wallet $cash
+    msg $chan "% $nick (admin) gave [lindex $text 0] \$$cash.00."
+  }
+}
+
+proc pub:merge {nick uhost handle chan text} {
+  # .merge <nick1> <nick1> - merge nick1 into nick2
+  if {[lindex $text 1] == ""} {
+    notice $nick "ass, give me two nicknames"
+  } else {
+    slot_player_incr [lindex $text 1] won [slot_player_get [lindex $text 0] won]
+    slot_player_incr [lindex $text 1] lost [slot_player_get [lindex $text 0] lost]
+    slot_player_incr [lindex $text 1] spent [slot_player_get [lindex $text 0] spent]
+    slot_player_incr [lindex $text 1] stolen [slot_player_get [lindex $text 0] stolen]
+    slot_player_incr [lindex $text 1] wallet [slot_player_get [lindex $text 0] wallet]
+    slot_player_incr [lindex $text 1] bank [slot_player_get [lindex $text 0] bank]
+    slot_player_del [lindex $text 0]
+  }
+}
 
 array set slot_items "bell {1,10 [align "BELL" 10 " " C] } cherry {1,5 [align "CHERRY" 10 " " C] } plum {1,6 [align "PLUM" 10 " " C] } weed {1,9 [align "WEED" 10 " " C] } strawberry {0,4 [align "STRAWBERRY " 10 " " C] } coal {0,1 [align "COAL" 10 " " C] } blueberry {1,11 [align "BLUEBERRY" 10 " " C] } orange {1,7 [align "ORANGE" 10 " " C] } apple {4,3 [align "APPLE" 10 " " C] } banana {1,8 [align "BANANA" 10 " " C] }"
 
@@ -19,6 +123,7 @@ proc pub:help {nick uhost handle chan text} {
   set cmd [string trim [string tolower [lindex $text 0]] .]
   if {[lindex $text 0] == ""} {
     notice $nick "*** Commands List for StupidOP ***"
+    notice $nick "
     notice $nick ".slots    : Gamble on the pokies"
     notice $nick ".roll     : Roll for doubles"
     notice $nick ".cash     : See how much cash you/someone else has"
@@ -26,6 +131,7 @@ proc pub:help {nick uhost handle chan text} {
     notice $nick ".jackpot  : View the Jackpot statistics."
     notice $nick ".bank     : Put money in the bank."
     notice $nick ".withdraw : Put money in your wallet."
+    notice $nick ".rank     : Show your/other user/total rank."
     notice $nick ".seen     : Check when a user was last seen"
     notice $nick ".top      : Check the top statistics"
     notice $nick ".random   : Say a random line of a user"
@@ -74,12 +180,23 @@ proc pub:help {nick uhost handle chan text} {
   } elseif {$cmd == ""} {
     notice $nick "For more information, visit https://stupid.nictitate.net/command.php?seen"
   } else {
-    pub:help $nick $uhost $handle $chan ""
+    notice $nick "Invalid request: That is not a valid option."
   }
 }
 
-proc pub:commands {nick uhost handle chan text} {
-  pub:help $nick $uhost $handle $chan $text
+proc pub:police {nick uhost handle chan text} {
+  # .police <nick> - calls the police on the nick
+  if {[lindex $text 0] == ""} {
+    notice $nick "Who are you calling the police on?"
+  } elseif {[slot_steal_get [lindex $text 0]] == ""} {
+    msg $chan "$nick tried to call the cops on [lindex $text 0] but they haven't done anything! $nick gets locked up."
+  } else {
+    foreach theft [slot_steal_get] {
+      if {[string tolower [lindex $theft 2]] == [string tolower [lindex $text 0]]} {
+        msg $chan "$nick called the police on [lindex $text 0], he's FUCKED!"
+      }
+    }
+  }
 }
 
 proc pub:roll {nick uhost handle chan text} {
@@ -377,12 +494,4 @@ proc slot:pubm {nick uhost handle chan text} {
     slot_player_decr [lindex $info 2] wallet $drop
     slot_player_set $nick steal 0
   }
-}
-
-if {![info exists slot(jackpot)]} {
-  set slot(jackpot) [rand 200]
-  set slot(total.winners) 0
-  set slot(total.jackpot) 0
-  set slot(last.winner) "n/a"
-  set slot(last.jackpot) "0"
 }
