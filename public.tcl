@@ -1,6 +1,7 @@
 bind pub - $sb(cmd)help pub:help
 bind pub - $sb(cmd)commands pub:commands
-bind pub - $sb(cmd)slots pub:slots
+bind pub - $sb(cmd)spin pub:spin
+bind pub - $sb(cmd)roll pub:roll
 bind pub - $sb(cmd)cash pub:cash
 bind pub - $sb(cmd)bank pub:bank
 bind pub - $sb(cmd)rob pub:rob
@@ -16,6 +17,7 @@ proc pub:help {nick uhost handle chan text} {
   if {[lindex $text 0] == ""} {
     notice $nick "*** Commands List for StupidOP ***"
     notice $nick ".slots    : Gamble on the pokies"
+    notice $nick ".roll     : Roll for doubles"
     notice $nick ".cash     : See how much cash you/someone else has"
     notice $nick ".rob      : Rob another players cash"
     notice $nick ".jackpot  : View the Jackpot statistics."
@@ -77,7 +79,68 @@ proc pub:commands {nick uhost handle chan text} {
   pub:help $nick $uhost $handle $chan $text
 }
 
-proc pub:slots {nick uhost handle chan text} {
+proc pub:roll {nick uhost handle chan text} {
+  slot_player_check $nick
+  
+  if {[slot_funds_check $nick 1] == -1} {
+    notice $nick "You don't have enough funds in your wallet for this, please withdraw from the bank!"
+  } elseif {[slot_funds_check $nick 1] == 0} {
+    notice $nick "You don't have enough funds in your wallet or in the bank for this, go raise some cash!"
+  } else {
+    slot_player_incr $nick spent 1
+    slot_player_decr $nick wallet 1
+    
+    set item(1) [rand 7]
+    while {$item(1) == 0} {
+      set item(1) [rand 7]
+    }
+    
+    set item(2) [rand 7]
+    while {$item(2) == 0} {
+      set item(2) [rand 7]
+    }
+    
+    set win 0
+    set slang ""
+    set msg "0,4 ! 4,0 ! 0,4 D 4,0 I 0,4 C 4,0 E 0,4 ! 4,0 !  ::: \[ 0,4 $item(1)  | 0,4 $item(2)  \] ::: "
+    
+    if {($item(1) == $item(2)) && ($item(1) == 1)} {
+      set win 2
+      set slang "SNAKE EYES"
+    } elseif {($item(1) == $item(2)) && ($item(1) == 2)} {
+      set win 5
+      set sland "HARD FOUR"
+    } elseif {($item(1) == $item(2)) && ($item(1) == 3)} {
+      set win 10
+      set slang "HARD SIX"
+    } elseif {($item(1) == $item(2)) && ($item(1) == 4)} {
+      set win 10
+      set slang "HARD EIGHT"
+    } elseif {($item(1) == $item(2)) && ($item(1) == 5)} {
+      set win 50
+      set slang "HARD TEN"
+    } elseif {($item(1) == $item(2)) && ($item(1) == 6)} {
+      set win 100
+      set slang "BOXCARS"
+    }
+    
+    if {$win == 0} {
+      set msg "$msg $nick lost!"
+    } else {
+      set msg "$msg $nick just won \$$win.00 ::: $slang!!!"
+      slot_incr total.winners
+      slot_incr total.jackpot $win
+      slot_player_incr $nick won $win
+      slot_player_incr $nick wallet $win
+      slot_set last.winner $nick
+      slot_set last.jackpot $win
+    }
+    
+    msg $chan $msg
+  }
+}
+
+proc pub:spin {nick uhost handle chan text} {
   global slot_items
   
   # configure the player defaults if they don't already exist
@@ -107,6 +170,7 @@ proc pub:slots {nick uhost handle chan text} {
       slot_incr total.winners
       slot_incr total.jackpot [slot_get jackpot]
       slot_player_incr $nick won [slot_get jackpot]
+      slot_player_incr $nick wallet [slot_get jackpot]
       slot_set last.winner $nick
       slot_set last.jackpot [slot_get jackpot]
       slot_set jackpot [rand 200]
