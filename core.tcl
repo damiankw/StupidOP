@@ -138,7 +138,9 @@ proc slot_check {} {
     } elseif {[expr [lindex $slot($item) 0] + 300] < [clock seconds]} {
       msg [lindex $slot($item) 1] "[lindex $slot($item) 2] has stolen \$[lindex $slot($item) 4].00 from [lindex $slot($item) 3]!!!!!!"
       slot_player_decr [lindex $slot($item) 3] wallet [lindex $slot($item) 4]
+      slot_player_incr [lindex $slot($item) 3] lost [lindex $slot($item) 4]
       slot_player_incr [lindex $slot($item) 2] wallet [lindex $slot($item) 4]
+      slot_player_incr [lindex $slot($item) 2] stolen [lindex $slot($item) 4]
       array unset slot $item
     }
   }
@@ -169,6 +171,14 @@ proc slot_player_check {user} { # updated
   
   if {![info exists slot([string tolower $user],steal)]} {
     set slot([string tolower $user],steal) 0
+  }
+  
+  if {![info exists slot([string tolower $user],stolen)]} {
+    set slot([string tolower $user],stolen) 0
+  }
+  
+  if {![info exists slot([string tolower $user],lost)]} {
+    set slot([string tolower $user],lost) 0
   }
 }
 

@@ -5,11 +5,14 @@ bind pub - $sb(cmd)cash pub:cash
 bind pub - $sb(cmd)bank pub:bank
 bind pub - $sb(cmd)rob pub:rob
 bind pub - $sb(cmd)jackpot pub:jackpot
+bind pub - $sb(cmd)withdraw pub:withdraw
+bind pub - $sb(cmd)profile pub:profile
 bind pubm - * slot:pubm
 
 array set slot_items "bell {1,10 [align "BELL" 10 " " C] } cherry {1,5 [align "CHERRY" 10 " " C] } plum {1,6 [align "PLUM" 10 " " C] } weed {1,9 [align "WEED" 10 " " C] } strawberry {0,4 [align "STRAWBERRY " 10 " " C] } coal {0,1 [align "COAL" 10 " " C] } blueberry {1,11 [align "BLUEBERRY" 10 " " C] } orange {1,7 [align "ORANGE" 10 " " C] } apple {4,3 [align "APPLE" 10 " " C] } banana {1,8 [align "BANANA" 10 " " C] }"
 
 proc pub:help {nick uhost handle chan text} {
+  set cmd [string trim [string tolower [lindex $text 0]] .]
   if {[lindex $text 0] == ""} {
     notice $nick "*** Commands List for StupidOP ***"
     notice $nick ".gamble : Gamble on the pokies"
@@ -20,27 +23,27 @@ proc pub:help {nick uhost handle chan text} {
     notice $nick ".random : Say a random line of a user"
     notice $nick "For more information on any command, visit https://stupid.nictitate.net/ or use: .help <command>"
     notice $nick "*** End of List ***"
-  } elseif {[string trim [string tolower [lindex $text 0]] .] == "gamble"} {
+  } elseif {$cmd == "gamble"} {
     notice $nick "Usage: .gamble"
     notice $nick "     - Runs the pokies for \$1.00 and gives you the change to in the JACKPOT!"
     notice $nick "For more information, visit https://stupid.nictitate.net/command.php?gamble"
-  } elseif {[string trim [string tolower [lindex $text 0]] .] == "cash"} {
+  } elseif {$cmd == "cash"} {
     notice $nick "Usage: .cash \[<nick>\]"
     notice $nick "     - Shows the current cash for the player (or yourself if no player is specified)"
     notice $nick "For more information, visit https://stupid.nictitate.net/command.php?cash"
-  } elseif {[string trim [string tolower [lindex $text 0]] .] == "rob"} {
+  } elseif {$cmd == "rob"} {
     notice $nick "Usage: .rob <nick>"
     notice $nick "     - Attempts to rob the player from their wallet. They have five minutes to say anything in the channel to stop you."
     notice $nick "     - If the player stops you, you will drop cash, even if you have none! BEWARE!"
     notice $nick "For more information, visit https://stupid.nictitate.net/command.php?rob"
-  } elseif {[string trim [string tolower [lindex $text 0]] .] == "seen"} {
+  } elseif {$cmd == "seen"} {
     notice $nick "Usage: .seen <nick> \[-cmd <command>|-limit <num>|-chan <chan>\]"
     notice $nick "     - Attempt to find when the user was last active on the network, the switches will specify search parameters. Defaults to all commands and all channels with a limit of 1."
     notice $nick "     % -cmd <command> : Search only the command queried, valid commands are TEXT|JOIN|PART|QUIT|NICK|KICK|KICKED"
     notice $nick "     % -limit <num>   : Return this number of search results, maximum is 10."
     notice $nick "     % -chan <chan>   : Search only in the channel queried."
     notice $nick "For more information, visit https://stupid.nictitate.net/command.php?seen"
-  } elseif {[string trim [string tolower [lindex $text 0]] .] == "top"} {
+  } elseif {$cmd == "top"} {
     notice $nick "Usage: .top \[-today|-yesterday|-week|-month|-alltime\] \[-lines|-words|-stats|-all\] \[-global|-chan <chan>\]"
     notice $nick "     - Display the top chatters through the history. Default is the top lines for all time on the current channel."
     notice $nick "     % -<date field> : Display statistics for the period queried."
@@ -48,15 +51,19 @@ proc pub:help {nick uhost handle chan text} {
     notice $nick "     % -global       : Displays statistics for all channels."
     notice $nick "     % -chan <chan>  : Displays statistics for the channel queried."
     notice $nick "For more information, visit https://stupid.nictitate.net/command.php?top"
-  } elseif {[string trim [string tolower [lindex $text 0]] .] == "random"} {
+  } elseif {$cmd == "random"} {
     notice $nick "Usage: .random \[<nick>\]"
     notice $nick "     - Displays a random line from nick. If no nick is specified, it chooses a random line from everyone."
     notice $nick "For more information, visit https://stupid.nictitate.net/command.php?random"
-  } elseif {[string trim [string tolower [lindex $text 0]] .] == "bank"} {
+  } elseif {$cmd == "bank"} {
     notice $nick "Usage: .bank \[<amount>\]"
     notice $nick "     - Banks the amount so no one can steal it from you without a group effort vault break. If no amount is specified, it will bank all of your cash."
     notice $nick "For more information, visit https://stupid.nictitate.net/command.php?bank"
-  } elseif {[string trim [string tolower [lindex $text 0]] .] == ""} {
+  } elseif {$cmd == "withdraw"} {
+    notice $nick "Usage: withdraw \[<amount>\]"
+    notice $nick "     - Withdraws the amount and puts it in your wallet for use. If no amount is specified, \$100 will be withdrawn."
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?withdraw"
+  } elseif {$cmd == ""} {
     notice $nick "For more information, visit https://stupid.nictitate.net/command.php?seen"
   } else {
     pub:help $nick $uhost $handle $chan ""
@@ -68,7 +75,7 @@ proc pub:commands {nick uhost handle chan text} {
 }
 
 proc pub:gamble {nick uhost handle chan text} {
-  global slot slot_items
+  global slot_items
   
   # configure the player defaults if they don't already exist
   slot_player_check $nick
@@ -85,7 +92,7 @@ proc pub:gamble {nick uhost handle chan text} {
     set item(3) $slot_items([lindex [array names slot_items] [rand [llength [array names slot_items]]]])
 
     # set the start message
-    set msg "1,10 ! 1,5 ! 1,6 G 1,9 A 0,4 M 0,1 B 1,11 L 1,7 E 4,3 ! 1,8 !    :::   \[JACKPOT: \$$slot(jackpot).00\]   :::   \[ $item(1) | $item(2) | $item(3) \]   :::  "
+    set msg "1,10 ! 1,5 ! 1,6 G 1,9 A 0,4 M 0,1 B 1,11 L 1,7 E 4,3 ! 1,8 !  ::: \[\$[slog_get jackpot].00\] ::: \[ $item(1) | $item(2) | $item(3) \] :::"
 
     # it costs $1
     slot_player_incr $nick spent 1
@@ -93,8 +100,9 @@ proc pub:gamble {nick uhost handle chan text} {
 
     if {($item(1) == $item(2)) && ($item(2) == $item(3))} {
       # we have a winner!
-      set msg "$msg 0 1,8 J 1,4 A 1,9 C 1,7 K 1,13 P 1,11 O 1,5 T    !!! $nick just won $slot(jackpot) points!!!"
-      slot_incr winners
+      set msg "$msg 0 1,8 J 1,4 A 1,9 C 1,7 K 1,13 P 1,11 O 1,5 T    !!! $nick just won [slot_get jackpot] points!!!"
+      slot_incr total.winners
+      slot_incr total.jackpot [slot_get jackpot]
       slot_player_incr $nick won [slot_get jackpot]
       slot_set last.winner $nick
       slot_set last.jackpot [slot_get jackpot]
@@ -116,7 +124,7 @@ proc pub:gamble {nick uhost handle chan text} {
 }
 
 proc pub:jackpot {nick uhost handle chan text} {
-  notice $nick "Current Jackpot:\[\$[slot_get jackpot].00\] Last Jackpot:\[\$[slot_get last.jackpot].00\] Last Winner:\[[slot_get last.winner]\] Total Winners:\[[slot_get winners]\]"
+  notice $nick "Current Jackpot:\[\$[slot_get jackpot].00\] Last Jackpot:\[\$[slot_get last.jackpot].00\] Last Winner:\[[slot_get last.winner]\] Total Winners:\[[slot_get total.winners]\] Total Jackpots:\[[slot_get total.jackpot]\]"
 }
 
 proc pub:cash {nick uhost handle chan text} {
@@ -130,6 +138,48 @@ proc pub:cash {nick uhost handle chan text} {
   notice $nick "Amount Won:\[\$[slot_player_get $user won].00\] Amount Spent:\[\$[slot_player_get $user spent].00\] Wallet:\[\$[slot_player_get $user wallet].00\] Bank:\[\$[slot_player_get $user bank].00\]"
 }
 
+proc pub:profile {nick uhost handle chan text} {
+  global slot
+  if {[lindex $text 0] == ""} {
+    set user $nick
+  } else {
+    set user [lindex $text 0]
+  }
+  
+  notice $nick "*** Player Information for $user ***"
+  notice $nick "In-Wallet : \$[align [slot_player_get $user wallet].00 15] | In-Bank   : \$[slot_player_get $user bank].00"
+  notice $nick "Spent     : \$[align [slot_player_get $user spent].00 15] | Won       : \$[slot_player_get $user won].00"
+  notice $nick "Lost      : \$[align [slot_player_get $user lost].00 15] | Stolen    : \$[slot_player_get $user stolen].00"
+  notice $nick "*** End of List ***"
+}
+
+proc pub:withdraw {nick uhost handle chan text} {
+  # .withdraw [<amount>]
+  if {[lindex $text 0] == ""} {
+    set withdraw 100
+    
+    if {$withdraw > [slot_player_get $nick bank]} {
+      set withdraw [slot_player_get $nick bank]
+    }
+  } else {
+    set withdraw [string trim [lindex [split $text .] 0] "\$"]
+  }
+  
+  if {[slot_player_get $nick bank] == 0} {
+    notice $nick "You currently have nothing in your bank, you can't withdraw."
+  } elseif {$withdraw <= 0} {
+    notice $nick "You have to at least withdraw \$1.00"
+  } elseif {![isnum $withdraw]} {
+    notice $nick "You need to provide a number/currency."
+  } elseif {$withdraw > [slot_player_get $nick bank]} {
+    notice $nick "You currently have \$[slot_player_get $nick bank].00 in your bank, you can't withdraw \$$withdraw.00."
+  } else {
+    slot_player_incr $nick wallet $withdraw
+    slot_player_decr $nick bank $withdraw
+    msg $chan "0,1 ! 1,0 ! 0,1 B 1,0 A 0,1 N 1,0 K 0,1 ! 1,0 !  $nick has withdrawn \$$withdraw.00, leaving \$[slot_player_get $nick bank].00 in their bank."
+  }
+}
+
 proc pub:bank {nick uhost handle chan text} {
   global slot
   if {[lindex $text 0] == ""} {
@@ -139,7 +189,7 @@ proc pub:bank {nick uhost handle chan text} {
   }
   
   if {[slot_player_get $nick wallet] == 0} {
-    notice $nick "You currently nothing in your wallet, you can't bank."
+    notice $nick "You currently have nothing in your wallet, you can't bank."
   } elseif {[slot_player_get $nick wallet] < 0} {
     notice $nick "You currently owe money, you can't bank."
   } elseif {$bank <= 0} {
@@ -150,6 +200,7 @@ proc pub:bank {nick uhost handle chan text} {
     notice $nick "You currently have \$[slot_player_get $nick wallet].00 in your wallet, you can't bank \$$bank.00."
   } else {
     slot_player_incr $nick bank $bank
+    slot_player_decr $nick wallet $bank
     msg $chan "0,1 ! 1,0 ! 0,1 B 1,0 A 0,1 N 1,0 K 0,1 ! 1,0 !  $nick has banked \$$bank.00, leaving \$[slot_player_get $nick wallet].00 in their wallet."
   }
 }
@@ -199,7 +250,8 @@ proc slot:pubm {nick uhost handle chan text} {
 
 if {![info exists slot(jackpot)]} {
   set slot(jackpot) [rand 200]
-  set slot(winners) 0
+  set slot(total.winners) 0
+  set slot(total.jackpot) 0
   set slot(last.winner) "n/a"
   set slot(last.jackpot) "0"
 }
