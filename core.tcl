@@ -167,6 +167,10 @@ proc slot_player_check {user} { # updated
   if {![info exists slot([string tolower $user],lost)]} {
     set slot([string tolower $user],lost) 0
   }
+  
+  if {![info exists slot([string tolower $user],nick)]} {
+    set slot([string tolower $user],nick) $user
+  }
 }
 
 # check if the player has enough funds to do the command

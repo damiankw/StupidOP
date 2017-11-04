@@ -17,13 +17,111 @@ bind pub n $sb(cmd)give pub:give
 bind pub n $sb(cmd)merge pub:merge
 bind pubm - * slot:pubm
 
+array set slot_items "bell {1,10 [align "BELL" 10 " " C] } cherry {1,5 [align "CHERRY" 10 " " C] } plum {1,6 [align "PLUM" 10 " " C] } weed {1,9 [align "WEED" 10 " " C] } strawberry {0,4 [align "STRAWBERRY " 10 " " C] } coal {0,1 [align "COAL" 10 " " C] } blueberry {1,11 [align "BLUEBERRY" 10 " " C] } orange {1,7 [align "ORANGE" 10 " " C] } apple {4,3 [align "APPLE" 10 " " C] } banana {1,8 [align "BANANA" 10 " " C] }"
+
+proc pub:help {nick uhost handle chan text} {
+  slot_player_check $nick
+
+  set cmd [string trim [string tolower [lindex $text 0]] .]
+  if {[lindex $text 0] == ""} {
+    notice $nick "|[align " Game Commands " 78 "-" C]|"
+    notice $nick "| .spin     : Play the pokies.          | .roll     : Play the dice.            |"
+    notice $nick "| .throw    : Play the coins.           | .cash     : Check player cash.        |"
+    notice $nick "| .rob      : Steal player cash.        | .jackpot  : Check slot jackpot.       |"
+    notice $nick "| .bank     : Put money in the bank.    | .withdraw : Put money in your wallet. |"
+    notice $nick "| .rank     : Check player rank.        |                                       |"
+    notice $nick "|[align " Utility Commands " 78 "-" C]|"
+    notice $nick "| .seen     : Check user whereabouts.   | .top      : Check user statistics.    |"
+    notice $nick "| .random   : Say user text.            |                                       |"
+    notice $nick "|-------------------------------------------------------------------------------|"
+    notice $nick "For more information on any command, visit https://stupid.nictitate.net/ or use: .help <command>"
+  } elseif {$cmd == "spin"} {
+    notice $nick "Usage: .spin"
+    notice $nick "     - Play the pokies for \$1.00 and gives you the change to win the JACKPOT!"
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?spin"
+  } elseif {$cmd == "roll"} {
+    notice $nick "Usage: .roll"
+    notice $nick "     - Play the dice for \$1.00 and win small amounts of money."
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?roll"
+  } elseif {$cmd == "throw"} {
+    notice $nick "Usage: .throw"
+    notice $nick "     - Play the coins for \$1.00 and win small amounts of money."
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?throw"
+  } elseif {$cmd == "cash"} {
+    notice $nick "Usage: .cash \[<nick>\]"
+    notice $nick "     - Shows the current cash for the player (or yourself if no player is specified)"
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?cash"
+  } elseif {$cmd == "rob"} {
+    notice $nick "Usage: .rob <nick>"
+    notice $nick "     - Attempts to rob the player from their wallet. They have five minutes to say anything in the channel to stop you."
+    notice $nick "     - If the player stops you, you will drop cash, even if you have none! BEWARE!"
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?rob"
+  } elseif {$cmd == "jackpot"} {
+    notice $nick "Usage: .jackpot"
+    notice $nick "     - Shows you the statistics from pokies."
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?jackpot"
+  } elseif {$cmd == "bank"} {
+    notice $nick "Usage: .bank \[<amount>\]"
+    notice $nick "     - Banks the amount so no one can steal it from you without a group effort vault break. If no amount is specified, it will bank all of your cash."
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?bank"
+  } elseif {$cmd == "withdraw"} {
+    notice $nick "Usage: withdraw \[<amount>\]"
+    notice $nick "     - Withdraws the amount and puts it in your wallet for use. If no amount is specified, \$100 will be withdrawn."
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?withdraw"
+  } elseif {$cmd == "rank"} {
+    notice $nick "Usage: .rank \[<nick>] [-<top x|list>\]"
+    notice $nick "     - -top <n> : Lists the top N players."
+    notice $nick "     - -list    : Lists the players around the selected player."
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?rank"
+  } elseif {$cmd == "seen"} {
+    notice $nick "Usage: .seen <nick> \[-cmd <command>|-limit <num>|-chan <chan>\]"
+    notice $nick "     - Attempt to find when the user was last active on the network, the switches will specify search parameters. Defaults to all commands and all channels with a limit of 1."
+    notice $nick "     % -cmd <command> : Search only the command queried, valid commands are TEXT|JOIN|PART|QUIT|NICK|KICK|KICKED"
+    notice $nick "     % -limit <num>   : Return this number of search results, maximum is 10."
+    notice $nick "     % -chan <chan>   : Search only in the channel queried."
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?seen"
+  } elseif {$cmd == "top"} {
+    notice $nick "Usage: .top \[-today|-yesterday|-week|-month|-alltime\] \[-lines|-words|-stats|-all\] \[-global|-chan <chan>\]"
+    notice $nick "     - Display the top chatters through the history. Default is the top lines for all time on the current channel."
+    notice $nick "     % -<date field> : Display statistics for the period queried."
+    notice $nick "     % -<type>       : Displays the statistics queried."
+    notice $nick "     % -global       : Displays statistics for all channels."
+    notice $nick "     % -chan <chan>  : Displays statistics for the channel queried."
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?top"
+  } elseif {$cmd == "random"} {
+    notice $nick "Usage: .random \[<nick>\]"
+    notice $nick "     - Displays a random line from nick. If no nick is specified, it chooses a random line from everyone."
+    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?random"
+  } else {
+    notice $nick "Invalid request: That is not a valid option."
+  }
+}
+
+proc pub:police {nick uhost handle chan text} {
+  slot_player_check $nick
+  
+  # .police <nick> - calls the police on the nick
+  if {[lindex $text 0] == ""} {
+    notice $nick "Who are you calling the police on?"
+  } elseif {[slot_steal_get [lindex $text 0]] == ""} {
+    msg $chan "$nick tried to call the cops on [lindex $text 0] but they haven't done anything! $nick gets locked up."
+  } else {
+    foreach theft [slot_steal_get] {
+      if {[string tolower [lindex $theft 2]] == [string tolower [lindex $text 0]]} {
+        set jail [rand 20]
+        msg $chan "$nick called the police on [lindex $text 0], he's FUCKED!"
+        msg $chan "! ! P O L I C E ! ! ::: Caught [lindex $text 0], $jail minutes in jail!"
+        slot_player_set [lindex $text 0] jail [expr [clock seconds] + ($jail * 60)]
+      }
+    }
+  }
+}
+
 proc pub:rank {nick uhost handle chan text} {
-  # .rank [<nick>] [-<top x|level x|limit x|list>]
-  # ./ -top x = shows top x
-  # -level x = shows user at position x
-  # ./ -limit x = ???
-  # -list = shows the list around the match
-  array set search [checkswitch $text "top 1 limit 1 level 1" "top 0 level 0 limit 10 list 0"]
+  slot_player_check $nick
+  
+  # .rank [<nick>] [-<top x|list>]
+  array set search [checkswitch $text "top 1" "top 0 list 0"]
 
   if {$search(top) > 0} {
     set user *
@@ -35,7 +133,7 @@ proc pub:rank {nick uhost handle chan text} {
   
   set rank_list [slot_rank_get]
   
-  set user_rank [lsearch $rank_list $user]
+  set user_rank [lsearch -exact $rank_list $user]
   
   if {($user_rank == -1) && ($user != "*")} {
     notice $nick "$user was not found in the database."
@@ -64,7 +162,7 @@ proc pub:rank {nick uhost handle chan text} {
 
     notice $nick "*** Listing Ranks \[Match: $user\] of [llength $rank_list] entries ***"
     notice $nick "      NickName                     Wallet            Bank           Total"
-    while {($cnt <= $end)} {
+    while {$cnt <= $end} {
       set luser [lindex $rank_list $cnt]
       set ltotal [expr [slot_player_get $luser wallet] + [slot_player_get $luser bank]]
       if {[string tolower $luser] == [string tolower $user]} {
@@ -114,88 +212,6 @@ proc pub:merge {nick uhost handle chan text} {
     slot_player_incr [lindex $text 1] wallet [slot_player_get [lindex $text 0] wallet]
     slot_player_incr [lindex $text 1] bank [slot_player_get [lindex $text 0] bank]
     slot_player_del [lindex $text 0]
-  }
-}
-
-array set slot_items "bell {1,10 [align "BELL" 10 " " C] } cherry {1,5 [align "CHERRY" 10 " " C] } plum {1,6 [align "PLUM" 10 " " C] } weed {1,9 [align "WEED" 10 " " C] } strawberry {0,4 [align "STRAWBERRY " 10 " " C] } coal {0,1 [align "COAL" 10 " " C] } blueberry {1,11 [align "BLUEBERRY" 10 " " C] } orange {1,7 [align "ORANGE" 10 " " C] } apple {4,3 [align "APPLE" 10 " " C] } banana {1,8 [align "BANANA" 10 " " C] }"
-
-proc pub:help {nick uhost handle chan text} {
-  set cmd [string trim [string tolower [lindex $text 0]] .]
-  if {[lindex $text 0] == ""} {
-    notice $nick "*** Commands List for StupidOP ***"
-    notice $nick "
-    notice $nick ".slots    : Gamble on the pokies"
-    notice $nick ".roll     : Roll for doubles"
-    notice $nick ".cash     : See how much cash you/someone else has"
-    notice $nick ".rob      : Rob another players cash"
-    notice $nick ".jackpot  : View the Jackpot statistics."
-    notice $nick ".bank     : Put money in the bank."
-    notice $nick ".withdraw : Put money in your wallet."
-    notice $nick ".rank     : Show your/other user/total rank."
-    notice $nick ".seen     : Check when a user was last seen"
-    notice $nick ".top      : Check the top statistics"
-    notice $nick ".random   : Say a random line of a user"
-    notice $nick "For more information on any command, visit https://stupid.nictitate.net/ or use: .help <command>"
-    notice $nick "*** End of List ***"
-  } elseif {$cmd == "slots"} {
-    notice $nick "Usage: .slots"
-    notice $nick "     - Runs the pokies for \$1.00 and gives you the change to in the JACKPOT!"
-    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?slots"
-  } elseif {$cmd == "cash"} {
-    notice $nick "Usage: .cash \[<nick>\]"
-    notice $nick "     - Shows the current cash for the player (or yourself if no player is specified)"
-    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?cash"
-  } elseif {$cmd == "rob"} {
-    notice $nick "Usage: .rob <nick>"
-    notice $nick "     - Attempts to rob the player from their wallet. They have five minutes to say anything in the channel to stop you."
-    notice $nick "     - If the player stops you, you will drop cash, even if you have none! BEWARE!"
-    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?rob"
-  } elseif {$cmd == "seen"} {
-    notice $nick "Usage: .seen <nick> \[-cmd <command>|-limit <num>|-chan <chan>\]"
-    notice $nick "     - Attempt to find when the user was last active on the network, the switches will specify search parameters. Defaults to all commands and all channels with a limit of 1."
-    notice $nick "     % -cmd <command> : Search only the command queried, valid commands are TEXT|JOIN|PART|QUIT|NICK|KICK|KICKED"
-    notice $nick "     % -limit <num>   : Return this number of search results, maximum is 10."
-    notice $nick "     % -chan <chan>   : Search only in the channel queried."
-    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?seen"
-  } elseif {$cmd == "top"} {
-    notice $nick "Usage: .top \[-today|-yesterday|-week|-month|-alltime\] \[-lines|-words|-stats|-all\] \[-global|-chan <chan>\]"
-    notice $nick "     - Display the top chatters through the history. Default is the top lines for all time on the current channel."
-    notice $nick "     % -<date field> : Display statistics for the period queried."
-    notice $nick "     % -<type>       : Displays the statistics queried."
-    notice $nick "     % -global       : Displays statistics for all channels."
-    notice $nick "     % -chan <chan>  : Displays statistics for the channel queried."
-    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?top"
-  } elseif {$cmd == "random"} {
-    notice $nick "Usage: .random \[<nick>\]"
-    notice $nick "     - Displays a random line from nick. If no nick is specified, it chooses a random line from everyone."
-    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?random"
-  } elseif {$cmd == "bank"} {
-    notice $nick "Usage: .bank \[<amount>\]"
-    notice $nick "     - Banks the amount so no one can steal it from you without a group effort vault break. If no amount is specified, it will bank all of your cash."
-    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?bank"
-  } elseif {$cmd == "withdraw"} {
-    notice $nick "Usage: withdraw \[<amount>\]"
-    notice $nick "     - Withdraws the amount and puts it in your wallet for use. If no amount is specified, \$100 will be withdrawn."
-    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?withdraw"
-  } elseif {$cmd == ""} {
-    notice $nick "For more information, visit https://stupid.nictitate.net/command.php?seen"
-  } else {
-    notice $nick "Invalid request: That is not a valid option."
-  }
-}
-
-proc pub:police {nick uhost handle chan text} {
-  # .police <nick> - calls the police on the nick
-  if {[lindex $text 0] == ""} {
-    notice $nick "Who are you calling the police on?"
-  } elseif {[slot_steal_get [lindex $text 0]] == ""} {
-    msg $chan "$nick tried to call the cops on [lindex $text 0] but they haven't done anything! $nick gets locked up."
-  } else {
-    foreach theft [slot_steal_get] {
-      if {[string tolower [lindex $theft 2]] == [string tolower [lindex $text 0]]} {
-        msg $chan "$nick called the police on [lindex $text 0], he's FUCKED!"
-      }
-    }
   }
 }
 
@@ -376,6 +392,8 @@ proc pub:jackpot {nick uhost handle chan text} {
 }
 
 proc pub:cash {nick uhost handle chan text} {
+  slot_player_check $nick
+  
   global slot
   if {[lindex $text 0] == ""} {
     set user $nick
@@ -387,6 +405,8 @@ proc pub:cash {nick uhost handle chan text} {
 }
 
 proc pub:profile {nick uhost handle chan text} {
+  slot_player_check $nick
+  
   global slot
   if {[lindex $text 0] == ""} {
     set user $nick
@@ -398,10 +418,15 @@ proc pub:profile {nick uhost handle chan text} {
   notice $nick "| In-Wallet : \$[align [slot_player_get $user wallet].00 15] | In-Bank   : \$[align [slot_player_get $user bank].00 15] |"
   notice $nick "| Spent     : \$[align [slot_player_get $user spent].00 15] | Won       : \$[align [slot_player_get $user won].00 15] |"
   notice $nick "| Lost      : \$[align [slot_player_get $user lost].00 15] | Stolen    : \$[align [slot_player_get $user stolen].00 15] |"
+  if {[slot_player_get $user jail] != 0} {
+  notice $nick "| [align "[slot_player_get $user nick] is in jail for [expr ([slot_player_get $user jail] - [clock seconds]) / 60] minutes." 59] |"
+  }
   notice $nick "|[align "" 61 "-"]|"
 }
 
 proc pub:withdraw {nick uhost handle chan text} {
+  slot_player_check $nick
+  
   # .withdraw [<amount>]
   if {[lindex $text 0] == ""} {
     set withdraw 100
@@ -430,6 +455,8 @@ proc pub:withdraw {nick uhost handle chan text} {
 
 proc pub:bank {nick uhost handle chan text} {
   global slot
+  slot_player_check $nick
+  
   if {[lindex $text 0] == ""} {
     set bank [slot_player_get $nick wallet]
   } else {
@@ -455,6 +482,8 @@ proc pub:bank {nick uhost handle chan text} {
 
 proc pub:rob {nick uhost handle chan text} {
   global slot
+  slot_player_check $nick
+  
   if {[lindex $text 0] == ""} {
     notice $nick "Who are you trying to steal money from?"
   } else {
@@ -483,15 +512,21 @@ proc slot:pubm {nick uhost handle chan text} {
     set info [slot_player_get $nick steal]
     set drop [rand 20]
     
+    msg $chan "3,1\002$nick\002 has stopped \002[lindex $info 2]\002 from stealing their money!"
+    
     # just so the wallet doesn't go into negatives, they drop what they have
-    if {$drop > [slot_player_get [lindex $info 2] wallet]} {
+    if {[slot_player_get [lindex $info 2] wallet] == 0} {
+      set jail [rand 20]
+      slot_player_set [lindex $info 2] jail [expr [clock seconds] + ($jail * 60)]
+      msg $chan "4,1\002[lindex $info 2]\002 stumbled and has been caught by the police! $jail minutes in jail."
+    } elseif {$drop > [slot_player_get [lindex $info 2] wallet]} {
       set drop [slot_player_get [lindex $info 2] wallet]
+      slot_player_decr [lindex $info 2] wallet $drop
+      msg $chan "4,1\002[lindex $info 2]\002 dropped \$$drop.00 as they were running away!"
     }
     
-    msg $chan "3,1\002$nick\002 has stopped \002[lindex $info 2]\002 from stealing their money!"
-    msg $chan "4,1\002[lindex $info 2]\002 dropped \$$drop.00 as they were running away!"
     
-    slot_player_decr [lindex $info 2] wallet $drop
     slot_player_set $nick steal 0
+    
   }
 }
