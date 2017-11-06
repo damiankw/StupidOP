@@ -410,8 +410,21 @@ proc game_bj_get_card {} {
 
 proc game_bj_get_total {cards} {
   set total 0
+  set held ""
   foreach card $cards {
-    incr total [game_card_to_num $card]
+    if {[string tolower $card] == "ace"} {
+      set held "$held $card"
+    } else {
+      incr total [game_card_to_num $card]
+    }
+  }
+  
+  foreach card $held {
+    if {$total <= 10} {
+      incr total 11
+    } else {
+      incr total 1
+    }
   }
   
   return $total
