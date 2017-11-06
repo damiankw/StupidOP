@@ -1,3 +1,4 @@
+putlog " > Loading core.tcl ..."
 proc seen_top_text {text user_list {limit 10}} {
   array set users $user_list
   set top ""
@@ -19,7 +20,7 @@ proc seen_top_text {text user_list {limit 10}} {
 proc stupid_autosave {} {
   # save
   array_save seen seen.dat
-  array_save slot slot.dat
+  array_save game game.dat
   
   if {![check_timer stupid_autosave]} {
     timer 10 stupid_autosave
@@ -116,69 +117,78 @@ proc seen_get {item} {
   return "[lindex [split $item ","] 0] $seen($item)"
 }
 
-proc slot_check {} {
-  global slot
+proc game_check {} {
+  global game
   # go through the current robberies and see if any have expired
-  foreach item [array names slot *,steal] {
-    if {$slot($item) == 0} {
+  foreach item [array names game *,steal] {
+    if {$game($item) == 0} {
       continue
-    } elseif {[expr [lindex $slot($item) 0] + 300] < [clock seconds]} {
-      msg [lindex $slot($item) 1] "[lindex $slot($item) 2] has stolen \$[lindex $slot($item) 4].00 from [lindex $slot($item) 3]!!!!!!"
-      slot_player_decr [lindex $slot($item) 3] wallet [lindex $slot($item) 4]
-      slot_player_incr [lindex $slot($item) 3] lost [lindex $slot($item) 4]
-      slot_player_incr [lindex $slot($item) 2] wallet [lindex $slot($item) 4]
-      slot_player_incr [lindex $slot($item) 2] stolen [lindex $slot($item) 4]
-      array unset slot $item
+    } elseif {[expr [lindex $game($item) 0] + 300] < [clock seconds]} {
+      msg [lindex $game($item) 1] "[lindex $game($item) 2] has stolen \$[lindex $game($item) 4].00 from [lindex $game($item) 3]!!!!!!"
+      game_player_decr [lindex $game($item) 3] wallet [lindex $game($item) 4]
+      game_player_incr [lindex $game($item) 3] lost [lindex $game($item) 4]
+      game_player_incr [lindex $game($item) 2] wallet [lindex $game($item) 4]
+      game_player_incr [lindex $game($item) 2] stolen [lindex $game($item) 4]
+      array unset game $item
     }
   }
   
-  if {![check_utimer slot_check]} {
-    utimer 10 slot_check
+  if {![check_utimer game_check]} {
+    utimer 10 game_check
   }
 }
 
+proc game_player_win {nick amount} {
+  game_player_incr $nick won $amount
+  game_player_incr $nick wallet $amount
+  game_incr total.winners
+  game_incr total.jackpot $amount
+  game_set last.winner $nick
+  game_set last.jackpot $amount
+}
+
 # check to see if the user has the variables required for no errors, create them if they don't
-proc slot_player_check {user} { # updated
-  global slot
-  if {![info exists slot([string tolower $user],spent)]} {
-    set slot([string tolower $user],spent) 0
+proc game_player_check {user} { # updated
+  global game
+  if {![info exists game([string tolower $user],spent)]} {
+    set game([string tolower $user],spent) 0
   }
 
-  if {![info exists slot([string tolower $user],won)]} {
-    set slot([string tolower $user],won) 0
+  if {![info exists game([string tolower $user],won)]} {
+    set game([string tolower $user],won) 0
   }
 
-  if {![info exists slot([string tolower $user],bank)]} {
-    set slot([string tolower $user],bank) 0
+  if {![info exists game([string tolower $user],bank)]} {
+    set game([string tolower $user],bank) 0
   }
   
-  if {![info exists slot([string tolower $user],wallet)]} {
-    set slot([string tolower $user],wallet) 50
+  if {![info exists game([string tolower $user],wallet)]} {
+    set game([string tolower $user],wallet) 50
   }
   
-  if {![info exists slot([string tolower $user],steal)]} {
-    set slot([string tolower $user],steal) 0
+  if {![info exists game([string tolower $user],steal)]} {
+    set game([string tolower $user],steal) 0
   }
   
-  if {![info exists slot([string tolower $user],stolen)]} {
-    set slot([string tolower $user],stolen) 0
+  if {![info exists game([string tolower $user],stolen)]} {
+    set game([string tolower $user],stolen) 0
   }
   
-  if {![info exists slot([string tolower $user],lost)]} {
-    set slot([string tolower $user],lost) 0
+  if {![info exists game([string tolower $user],lost)]} {
+    set game([string tolower $user],lost) 0
   }
   
-  if {![info exists slot([string tolower $user],nick)]} {
-    set slot([string tolower $user],nick) $user
+  if {![info exists game([string tolower $user],nick)]} {
+    set game([string tolower $user],nick) $user
   }
 }
 
 # check if the player has enough funds to do the command
-proc slot_funds_check {user price} {
-  if {[slot_player_get $user wallet] >= $price} {
+proc game_funds_check {user price} {
+  if {[game_player_get $user wallet] >= $price} {
     # the player has enough funds in their wallet
     return 1
-  } elseif {[slot_player_get $user bank] >= $price} {
+  } elseif {[game_player_get $user bank] >= $price} {
     # the player has funds in the bank, but needs to withdraw
     return -1
   } else {
@@ -187,84 +197,84 @@ proc slot_funds_check {user price} {
   }
 }
 
-# get player items (wallet, bank, etc), easier than using $slot()
-proc slot_player_get {user item} { # updated
-  global slot
+# get player items (wallet, bank, etc), easier than using $game()
+proc game_player_get {user item} { # updated
+  global game
   
-  if {![info exists slot([string tolower $user],[string tolower $item])]} {
+  if {![info exists game([string tolower $user],[string tolower $item])]} {
     return 0
   } else {
-    return $slot([string tolower $user],[string tolower $item])
+    return $game([string tolower $user],[string tolower $item])
   }
 }
 
-proc slot_player_set {user item value} {
-  global slot
+proc game_player_set {user item value} {
+  global game
   
-  set slot([string tolower $user],[string tolower $item]) $value
+  set game([string tolower $user],[string tolower $item]) $value
 }
 
 # increase the players item
-proc slot_player_incr {user item {value 1}} {
-  global slot
+proc game_player_incr {user item {value 1}} {
+  global game
   
-  incr slot([string tolower $user],[string tolower $item]) $value
+  incr game([string tolower $user],[string tolower $item]) $value
 }
 
 # decrease the players item
-proc slot_player_decr {user item {value 1}} {
-  global slot
+proc game_player_decr {user item {value 1}} {
+  global game
   
-  incr slot([string tolower $user],$item) -$value
+  incr game([string tolower $user],$item) -$value
 }
 
 # delete a player
-proc slot_player_del {nick} {
-  global slot
-  array unset slot [string tolower $nick],*
+proc game_player_del {nick} {
+  global game
+  array unset game [string tolower $nick],*
 }
 
-proc slot_incr {item {value 1}} {
-  global slot
+proc game_incr {item {value 1}} {
+  global game
   
-  incr slot([string tolower $item]) $value
+  incr game([string tolower $item]) $value
 }
 
 # decrease the players item
-proc slot_decr {item {value 1}} {
-  global slot
+proc game_decr {item {value 1}} {
+  global game
   
-  incr slot([string tolower $item]) $value
+  incr game([string tolower $item]) $value
 }
 
 # set a variable
-proc slot_set {item value} {
-  global slot
+proc game_set {item value} {
+  global game
   
-  set slot([string tolower $item]) $value
+  set game([string tolower $item]) $value
 }
 
-proc slot_get {item} {
-  global slot
+proc game_get {item} {
+  global game
   
-  return $slot([string tolower $item])
+  return $game([string tolower $item])
 }
 
-proc slot_flood_check {nick} {
+proc game_flood_check {nick} {
   # only do one command every 4 seconds
-  if {[expr [clock seconds] - [slot_player_get $nick flood]] <= 5} {
+  if {[expr [clock seconds] - [game_player_get $nick flood]] <= 5} {
     return 1
   } else {
-    slot_player_set $nick flood [clock seconds]
+    game_player_set $nick flood [clock seconds]
     return 0
   }
 }
 
-proc slot_rank_get {} {
+proc game_rank_get {} {
   # get the wallet+bank
-  global slot
-  foreach item [array names slot *,wallet] {
-    set total([lindex [split $item ,] 0]) [expr [slot_player_get [lindex [split $item ,] 0] wallet] + [slot_player_get [lindex [split $item ,] 0] bank]]
+  global game
+  foreach item [array names game *,wallet] {
+    set total([lindex [split $item ,] 0]) [expr [game_player_get [lindex [split $item ,] 0] wallet] + [game_player_get [lindex [split $item ,] 0] bank]]
   }
   
   set rank [array_sort [array get total]]
@@ -308,12 +318,12 @@ proc seen_top_text {text user_list {limit 10}} {
 
 
 # displays all of the active theft/rob attempts
-proc slot_steal_get {{nick *}} {
- global slot
+proc game_steal_get {{nick *}} {
+ global game
  set list ""
- foreach item [array names slot *,steal] {
-   if {($slot($item) != 0) && ([string match [string tolower $nick] [string tolower [lindex $slot($item) 2]]])} {
-     set list "$list {$slot($item)}"
+ foreach item [array names game *,steal] {
+   if {($game($item) != 0) && ([string match [string tolower $nick] [string tolower [lindex $game($item) 2]]])} {
+     set list "$list {$game($item)}"
    }
  }
  
@@ -326,21 +336,111 @@ if {![array exists seen] && [file exists "seen.dat"]} {
   source seen.dat
 }
 
-# load the slot database if it exists
-if {![array exists slot] && [file exists "slot.dat"]} {
-  putlog ".. loading SLOT internal database (slot.dat)."
-  source slot.dat
+# load the game database if it exists
+if {![array exists game] && [file exists "game.dat"]} {
+  putlog ".. loading game internal database (game.dat)."
+  source game.dat
 }
 
 
-if {![info exists slot(jackpot)]} {
-  set slot(jackpot) [rand 200]
-  set slot(total.winners) 0
-  set slot(total.jackpot) 0
-  set slot(last.winner) "n/a"
-  set slot(last.jackpot) "0"
+if {![info exists game(jackpot)]} {
+  set game(jackpot) [rand 200]
+  set game(total.winners) 0
+  set game(total.jackpot) 0
+  set game(last.winner) "n/a"
+  set game(last.jackpot) "0"
 }
 
-slot_check
+proc joke_read {file} {
+  set A [expr [rand [expr [lines stupidop/files/joke.txt] / 2]] * 2]
+  set Q [expr $A - 1]
+  
+  return "{[string trim [lrange [readline stupidop/files/joke.txt $Q] 1 end]]} {[string trim [lrange [readline stupidop/files/joke.txt $A] 1 end]]}"
+}
+
+proc game_bj_play_dealer {nick chan} {
+  while {[game_bj_get_total [game_player_get $nick bj.dealer]] < 16} {
+    if {[game_bj_get_total [game_player_get $nick bj.dealer]] > [game_bj_get_total [game_player_get $nick bj.cards]]} {
+      break
+    }
+    
+    set card [game_bj_get_card]
+    game_player_set $nick bj.dealer "[game_player_get $nick bj.dealer] $card"
+  }
+  
+  set msg "1,4 ! 4,1 ! 1,4 B 4,1 L 1,4 A 4,1 C 1,4 K 4,1 J 1,4 A 4,1 C 1,4 K 4,1 ! 1,4 !  :::"
+  
+  if {([game_bj_get_total [game_player_get $nick bj.dealer]] == 21) && ([game_bj_get_total [game_player_get $nick bj.cards]] == 21)} {
+    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4DRAW!!!"
+    game_player_win $nick [game_player_get $nick bj.bet]
+    game_player_set $nick bj.cards 0
+    
+  } elseif {[game_bj_get_total [game_player_get $nick bj.dealer]] == 21} {
+    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4$nick LOSES!!!"
+    game_player_set $nick bj.cards 0
+    
+  } elseif {[game_bj_get_total [game_player_get $nick bj.dealer]] > 21} {
+    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer went bust :::  1,4$nick WINS \$[expr [game_player_get $nick bj.bet] * 2].00!!!!"
+    game_player_win $nick [expr [game_player_get $nick bj.bet] * 2]
+    game_player_set $nick bj.cards 0
+    
+  } elseif {[game_bj_get_total [game_player_get $nick bj.dealer]] == [game_bj_get_total [game_player_get $nick bj.cards]]} {
+    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4DRAW!!"
+    game_player_win $nick [expr [game_player_get $nick bj.bet] * 2]
+    game_player_set $nick bj.cards 0
+    
+  } elseif {[game_bj_get_total [game_player_get $nick bj.dealer]] > [game_bj_get_total [game_player_get $nick bj.cards]]} {
+    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4$nick LOSES!!"
+    game_player_set $nick bj.cards 0
+    
+  } else {
+    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4$nick WINS \$[expr [game_player_get $nick bj.bet] * 2].00!!"
+    game_player_win $nick [expr [game_player_get $nick bj.bet] * 2]
+    game_player_set $nick bj.cards 0
+  }
+}
+
+proc game_bj_get_card {} {
+  return [game_num_to_card [expr [rand 13] + 1]]
+}
+
+proc game_bj_get_total {cards} {
+  set total 0
+  foreach card $cards {
+    incr total [game_card_to_num $card]
+  }
+  
+  return $total
+}
+
+proc game_card_to_num {card} {
+  if {[string tolower $card] == "ace"} {
+    return 11
+  } elseif {[string tolower $card] == "jack"} {
+    return 10
+  } elseif {[string tolower $card] == "queen"} {
+    return 10
+  } elseif {[string tolower $card] == "king"} {
+    return 10
+  } else {
+    return $card
+  }
+}
+
+proc game_num_to_card {num} {
+  if {$num == 1} {
+    return "Ace"
+  } elseif {$num == 11} {
+    return "Jack"
+  } elseif {$num == 12} {
+    return "Queen"
+  } elseif {$num == 13} {
+    return "King"
+  } else {
+    return $num
+  }
+}
+
+game_check
 
 stupid_autosave

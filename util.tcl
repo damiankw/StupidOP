@@ -1,3 +1,5 @@
+putlog " > Loading util.tcl ..."
+
 # check if 
 proc isnum {num} {
   if {$num == ""} {
@@ -250,4 +252,43 @@ proc align {text num {char " "} {type "L"}} {
   } elseif {[string toupper $type] == "C"} {
     return [string range $a 0 [expr [string length $a] / 2]]$text[string range $a [expr [string length $a] / 2] end]
   }
+}
+
+proc readline {file {line 0}} {
+  if {$line == 0} {
+    set line [rand [lines $file]]
+  }
+  
+  set lines 0
+  set rfile [open $file RDONLY]
+  
+  while {![eof $rfile]} {
+    incr lines 1
+    if {$lines == $line} {
+      set line [gets $rfile]
+      close $rfile
+      return $line
+    }
+    gets $rfile
+  }
+  
+  close $rfile
+}
+
+proc lines {file} {
+  if {![file isfile $file]} {
+    return
+  }
+  
+  set lines 0
+  set rfile [open $file RDONLY]
+  
+  while {![eof $rfile]} {
+    incr lines 1
+    gets $rfile
+  }
+  
+  close $rfile
+  
+  return $lines
 }

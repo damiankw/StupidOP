@@ -1,3 +1,4 @@
+putlog " > Loading admin.tcl ..."
 bind pub - $sb(cmd)system pub:system
 bind pubm n *,* pub:cmd
 

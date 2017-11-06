@@ -5,7 +5,10 @@ if {[catch {
   package require mysqltcl
 
   set sb(cmd) "."
+  set sb(path) "/home/damian/eggdrop/stupidop/"
   set sb(seen.file) "seen.dat"
+  set sb(game.file) "game.dat"
+  set sb(joke.file) "joke.txt"
 
   source stupidop/util.tcl
   source stupidop/seen.tcl
@@ -13,9 +16,11 @@ if {[catch {
   source stupidop/admin.tcl
   source stupidop/core.tcl
 
-
-
 } error]} {
-  putlog "- FATAL ERROR: $error"
-  putlog "* StupidOP could not be loaded."
+  foreach line [split $errorInfo \n] {
+    putlog " % $line"
+  }
+  putlog "& StupidOP could not be loaded."
+} else {
+  putlog "& StupidOP loaded successfully."
 }

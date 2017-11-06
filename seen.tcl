@@ -1,5 +1,5 @@
 # load the script ..
-putlog "- Loading seen module ..."
+putlog " > Loading seen.tcl ..."
 
 # all of the triggers
 bind pub - $sb(cmd)seen pub:seen
