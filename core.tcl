@@ -257,6 +257,10 @@ proc game_set {item value} {
 proc game_get {item} {
   global game
   
+  if {![info exists game([string tolower $item])]} {
+    return ""
+  }
+  
   return $game([string tolower $item])
 }
 
