@@ -59,12 +59,16 @@ proc pub:top {nick uhost handle chan text} {
   # lines = top by lines
   # words = top by words
   # stats = top topics, kicker, kicked, joiner, (ops, deops)
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
   array set args [checkswitch $text "limit 1 chan 2" "alltime 0 today 0 yesterday 0 week 0 month 0 all 0 lines 0 words 0 stats 0 help 0 limit 10 global 0 chan $chan"]
   set users(n/a) "n/a"
   set users(SERVER) "<server>"
 
   if {$args(help)} {
-    notice $nick "SYNTAX for TOP: $stc(cmd)top -<today|yesterday|week|month|alltime> -<lines|words|stats|all> -<limit x> \[-<global|chan <channel>\]"
+    notice $nick "SYNTAX for TOP: top -<today|yesterday|week|month|alltime> -<lines|words|stats|all> -<limit x> \[-<global|chan <channel>\]"
     return
   }
   
@@ -145,6 +149,10 @@ proc pub:top {nick uhost handle chan text} {
 }
 
 proc pub:random {nick uhost handle chan text} {
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
   if {$text == ""} {
     set rand [seen_get [lindex [seen_search * * text] [rand [llength [seen_search * * text]]]]]
     msg $chan "<[lindex [split [lindex $rand 1] ,] 0]> [lrange $rand 4 end]"

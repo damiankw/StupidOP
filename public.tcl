@@ -26,8 +26,11 @@ bind pub - $sb(cmd)s pub:stand
 bind pub - $sb(cmd)hangman pub:hangman
 bind pub - $sb(cmd)guess pub:guess
 bind pub - $sb(cmd)g pub:guess
+bind pub - $sb(cmd)welfare pub:welfare
+bind pub - $sb(cmd)host pub:host
 bind pub n $sb(cmd)give pub:give
 bind pub n $sb(cmd)merge pub:merge
+bind pub n $sb(cmd)draw pub:draw
 bind pubm - * game:pubm
 
 array set game_items "bell {1,10 [align "BELL" 10 " " C] } cherry {1,5 [align "CHERRY" 10 " " C] } plum {1,6 [align "PLUM" 10 " " C] } weed {1,9 [align "WEED" 10 " " C] } strawberry {0,4 [align "STRAWBERRY " 10 " " C] } coal {0,1 [align "COAL" 10 " " C] } blueberry {1,11 [align "BLUEBERRY" 10 " " C] } orange {1,7 [align "ORANGE" 10 " " C] } apple {4,3 [align "APPLE" 10 " " C] } banana {1,8 [align "BANANA" 10 " " C] }"
@@ -43,9 +46,10 @@ proc pub:help {nick uhost handle chan text} {
     notice $nick "| .rob       : Steal player cash.        | .jackpot   : Check slot jackpot.       |"
     notice $nick "| .bank      : Put money in the bank.    | .withdraw  : Put money in your wallet. |"
     notice $nick "| .rank      : Check player rank.        | .blackjack : Play blackjack! (.h|.s)   |"
+    notice $nick "| .welfare   : Apply for welfare (\$50)   |                                        |"
     notice $nick "|[align " Utility Commands " 80 "-" C]|"
     notice $nick "| .seen      : Check user whereabouts.   | .top       : Check user statistics.    |"
-    notice $nick "| .random    : Say user text.            |                                        |"
+    notice $nick "| .random    : Say user text.            | .host      : Check hosts of a user.    |"
     notice $nick "|---------------------------------------------------------------------------------|"
     notice $nick "For more information on any command, visit https://stupid.nictitate.net/ or use: .help <command>"
   } elseif {$cmd == "spin"} {
@@ -111,6 +115,14 @@ proc pub:help {nick uhost handle chan text} {
     notice $nick "Usage: .random \[<nick>\]"
     notice $nick "     - Displays a random line from nick. If no nick is specified, it chooses a random line from everyone."
     notice $nick "For more information, visit https://stupid.nictitate.net/command.php?random"
+  } elseif {$cmd == "welfare"} {
+    notice $nick "Usage: .welfare"
+    notice $nick "     - Apply for welfare payments. This can only be done if you have \$0 in your wallet and bank. A free \$50!"
+  } elseif {$cmd == "host"} {
+    notice $nick "Usage: .host <nick> \[-<limit num|inline>]"
+    notice $nick "     - Requests a list of hostnames the nickname has used. A limit of 20 applies when not using -inline."
+    notice $nick "     % -limit <num> : The limit of hostnames the bot will send you to stop from flooding (max 20)."
+    notice $nick "     % -inline      : Gives you ALL hosts but puts them inline in a flooding fashion."
   } else {
     notice $nick "Invalid request: That is not a valid option."
   }
@@ -118,8 +130,14 @@ proc pub:help {nick uhost handle chan text} {
 
 proc pub:joke {nick uhost handle chan text} {
   game_player_check $nick
+  
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
 
-  if {[game_flood_check $nick]} {
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't play any game."
+  } elseif {[game_flood_check $nick]} {
     notice $nick "You can't play again for another [expr [game_player_get $nick flood] + 5 - [clock seconds]] seconds."
   } else {
     set joke [joke_read /home/damian/eggdrop/stupidop/files/joke.txt]
@@ -132,7 +150,13 @@ proc pub:joke {nick uhost handle chan text} {
 proc pub:fact {nick uhost handle chan text} {
   game_player_check $nick
 
-  if {[game_flood_check $nick]} {
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't play any game."
+  } elseif {[game_flood_check $nick]} {
     notice $nick "You can't play again for another [expr [game_player_get $nick flood] + 5 - [clock seconds]] seconds."
   } else {
     set fact [readline /home/damian/eggdrop/stupidop/files/fact.txt [rand [lines /home/damian/eggdrop/stupidop/files/fact.txt]]]
@@ -144,18 +168,33 @@ proc pub:fact {nick uhost handle chan text} {
 proc pub:police {nick uhost handle chan text} {
   game_player_check $nick
   
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
   # .police <nick> - calls the police on the nick
-  if {[lindex $text 0] == ""} {
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't call the police."
+  } elseif {[lindex $text 0] == ""} {
     notice $nick "Who are you calling the police on?"
   } elseif {[game_steal_get [lindex $text 0]] == ""} {
-    msg $chan "$nick tried to call the cops on [lindex $text 0] but they haven't done anything! $nick gets locked up."
+    set jail [rand 3]
+    while {$jail == 0} {
+      set jail [rand 3]
+    }
+    msg $chan "$nick tried to call the cops on [lindex $text 0] but they haven't done anything! $nick gets locked up for $jail minutes."
+    game_player_set $nick jail "[expr [clock seconds] + ($jail * 60)] $chan $nick"
   } else {
     foreach theft [game_steal_get] {
       if {[string tolower [lindex $theft 2]] == [string tolower [lindex $text 0]]} {
-        set jail [rand 20]
+        set jail [rand 10]
+        while {$jail == 0} {
+          set jail [rand 10]
+        }
         msg $chan "$nick called the police on [lindex $text 0], he's FUCKED!"
-        msg $chan "! ! P O L I C E ! ! ::: Caught [lindex $text 0], $jail minutes in jail!"
-        game_player_set [lindex $text 0] jail [expr [clock seconds] + ($jail * 60)]
+        msg $chan "12,0 ! 0,12 ! 12,0 P 0,12 O 12,0 L 0,12 I 12,0 C 0,12 E 12,0 ! 0,12 !  ::: Caught [lindex $text 0], $jail minutes in jail!"
+        game_player_set [lindex $text 2] jail "[expr [clock seconds] + ($jail * 60)] $chan [lindex $text 0]"
+        game_player_set [lindex $theft 3] steal ""
       }
     }
   }
@@ -164,6 +203,10 @@ proc pub:police {nick uhost handle chan text} {
 proc pub:rank {nick uhost handle chan text} {
   game_player_check $nick
   
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
   # .rank [<nick>] [-<top x|list>]
   array set search [checkswitch $text "top 1" "top 0 list 0"]
 
@@ -262,7 +305,13 @@ proc pub:merge {nick uhost handle chan text} {
 proc pub:roll {nick uhost handle chan text} {
   game_player_check $nick
   
-  if {[game_flood_check $nick]} {
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't play any game."
+  } elseif {[game_flood_check $nick]} {
     notice $nick "You can't play again for another [expr [game_player_get $nick flood] + 5 - [clock seconds]] seconds."
   } elseif {[game_funds_check $nick 1] == -1} {
     notice $nick "You don't have enough funds in your wallet for this, please withdraw from the bank!"
@@ -320,7 +369,13 @@ proc pub:roll {nick uhost handle chan text} {
 proc pub:throw {nick uhost handle chan text} {
   game_player_check $nick
   
-  if {[game_flood_check $nick]} {
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't play any game."
+  } elseif {[game_flood_check $nick]} {
     notice $nick "You can't play again for another [expr [game_player_get $nick flood] + 5 - [clock seconds]] seconds."
   } elseif {[game_funds_check $nick 1] == -1} {
     notice $nick "You don't have enough funds in your wallet for this, please withdraw from the bank!"
@@ -365,11 +420,17 @@ proc pub:throw {nick uhost handle chan text} {
 proc pub:spin {nick uhost handle chan text} {
   global game_items
   
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
   # configure the player defaults if they don't already exist
   game_player_check $nick
   
   # check if the user has money to play
-  if {[game_flood_check $nick]} {
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't play any game."
+  } elseif {[game_flood_check $nick]} {
     notice $nick "You can't play again for another [expr [game_player_get $nick flood] + 5 - [clock seconds]] seconds."
   } elseif {[game_funds_check $nick 1] == -1} {
     notice $nick "You don't have enough funds in your wallet for this, please withdraw from the bank!"
@@ -397,7 +458,7 @@ proc pub:spin {nick uhost handle chan text} {
 
     if {($item(1) == $item(2)) && ($item(2) == $item(3))} {
       # we have a winner!
-      set msg "$msg 0 1,8 J 1,4 A 1,9 C 1,7 K 1,13 P 1,11 O 1,5 T    !!! $nick just won \$[game_get jackpot].00!!!"
+      set msg "$msg 0 1,8 J 1,4 A 1,9 C 1,7 K 1,13 P 1,11 O 1,5 T  !!! $nick just won \$[game_get jackpot].00!!!"
       game_player_win $nick [game_get jackpot]
       game_set jackpot [rand 200]
     } else {
@@ -410,19 +471,27 @@ proc pub:spin {nick uhost handle chan text} {
     set bonus [rand 1000]
     if {$bonus < 100} {
       # add in a bonus if we get a random number less than 100
-      msg $chan "1,9 ! 9,1 ! 1,9 B 9,1 O 1,9 N 9,1 U 1,9 S 9,1 ! 1,9 !    :::   AN EXTRA \$$bonus.00 HAS BEEN ADDED TO THE JACKPOT!!!"
+      msg $chan "1,9 ! 9,1 ! 1,9 B 9,1 O 1,9 N 9,1 U 1,9 S 9,1 ! 1,9 !  ::: AN EXTRA \$$bonus.00 HAS BEEN ADDED TO THE JACKPOT!!!"
       game_incr jackpot $bonus
     }
   }
 }
 
 proc pub:jackpot {nick uhost handle chan text} {
-  notice $nick "Current Jackpot:\[\$[game_get jackpot].00\] Last Jackpot:\[\$[game_get last.jackpot].00\] Last Winner:\[[game_get last.winner]\] Total Winners:\[[game_get total.winners]\] Total Jackpots:\[[game_get total.jackpot]\]"
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
+  notice $nick "Current Jackpot:\[\$[game_get jackpot].00\] Last Jackpot:\[\$[game_get last.jackpot].00\] Last Winner:\[[game_get last.winner]\] Total Winners:\[[game_get total.winners]\] Total Winnings:\[\$[game_get total.jackpot].00\]"
 }
 
 proc pub:cash {nick uhost handle chan text} {
   game_player_check $nick
   
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
   global game
   if {[lindex $text 0] == ""} {
     set user $nick
@@ -436,6 +505,10 @@ proc pub:cash {nick uhost handle chan text} {
 proc pub:profile {nick uhost handle chan text} {
   game_player_check $nick
   
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
   global game
   if {[lindex $text 0] == ""} {
     set user $nick
@@ -447,8 +520,8 @@ proc pub:profile {nick uhost handle chan text} {
   notice $nick "| In-Wallet : \$[align [game_player_get $user wallet].00 15] | In-Bank   : \$[align [game_player_get $user bank].00 15] |"
   notice $nick "| Bet       : \$[align [game_player_get $user spent].00 15] | Winnings  : \$[align [game_player_get $user won].00 15] |"
   notice $nick "| Lost      : \$[align [game_player_get $user lost].00 15] | Stolen    : \$[align [game_player_get $user stolen].00 15] |"
-  if {[game_player_get $user jail] != 0} {
-  notice $nick "| [align "[game_player_get $user nick] is in jail for [expr ([game_player_get $user jail] - [clock seconds]) / 60] minutes." 59] |"
+  if {[expr [game_player_get $user jail] - [clock seconds]] > 0} {
+    notice $nick "| [align "[game_player_get $user nick] is in jail for [string tolower [duration [expr ([game_player_get $user jail] - [clock seconds])] 2]]." 59] |"
   }
   notice $nick "|[align "" 61 "-"]|"
 }
@@ -456,29 +529,37 @@ proc pub:profile {nick uhost handle chan text} {
 proc pub:withdraw {nick uhost handle chan text} {
   game_player_check $nick
   
-  # .withdraw [<amount>]
-  if {[lindex $text 0] == ""} {
-    set withdraw 100
-    
-    if {$withdraw > [game_player_get $nick bank]} {
-      set withdraw [game_player_get $nick bank]
-    }
-  } else {
-    set withdraw [string trim [lindex [split $text .] 0] "\$"]
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
   }
-  
-  if {[game_player_get $nick bank] == 0} {
-    notice $nick "You currently have nothing in your bank, you can't withdraw."
-  } elseif {$withdraw <= 0} {
-    notice $nick "You have to at least withdraw \$1.00"
-  } elseif {![isnum $withdraw]} {
-    notice $nick "You need to provide a number/currency."
-  } elseif {$withdraw > [game_player_get $nick bank]} {
-    notice $nick "You currently have \$[game_player_get $nick bank].00 in your bank, you can't withdraw \$$withdraw.00."
+
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't make it to the bank."
   } else {
-    game_player_incr $nick wallet $withdraw
-    game_player_decr $nick bank $withdraw
-    msg $chan "0,1 ! 1,0 ! 0,1 B 1,0 A 0,1 N 1,0 K 0,1 ! 1,0 !  $nick has withdrawn \$$withdraw.00, leaving \$[game_player_get $nick bank].00 in their bank."
+    # .withdraw [<amount>]
+    if {[lindex $text 0] == ""} {
+      set withdraw 100
+
+      if {$withdraw > [game_player_get $nick bank]} {
+        set withdraw [game_player_get $nick bank]
+      }
+    } else {
+      set withdraw [string trim [lindex [split $text .] 0] "\$"]
+    }
+
+    if {[game_player_get $nick bank] == 0} {
+      notice $nick "You currently have nothing in your bank, you can't withdraw."
+    } elseif {$withdraw <= 0} {
+      notice $nick "You have to at least withdraw \$1.00"
+    } elseif {![isnum $withdraw]} {
+      notice $nick "You need to provide a number/currency."
+    } elseif {$withdraw > [game_player_get $nick bank]} {
+      notice $nick "You currently have \$[game_player_get $nick bank].00 in your bank, you can't withdraw \$$withdraw.00."
+    } else {
+      game_player_incr $nick wallet $withdraw
+      game_player_decr $nick bank $withdraw
+      msg $chan "0,1 ! 1,0 ! 0,1 B 1,0 A 0,1 N 1,0 K 0,1 ! 1,0 !  ::: $nick has withdrawn \$$withdraw.00, leaving \$[game_player_get $nick bank].00 in their bank."
+    }
   }
 }
 
@@ -486,26 +567,34 @@ proc pub:bank {nick uhost handle chan text} {
   global game
   game_player_check $nick
   
-  if {[lindex $text 0] == ""} {
-    set bank [game_player_get $nick wallet]
-  } else {
-    set bank [string trim [lindex [split $text .] 0] "\$"]
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
   }
-  
-  if {[game_player_get $nick wallet] == 0} {
-    notice $nick "You currently have nothing in your wallet, you can't bank."
-  } elseif {[game_player_get $nick wallet] < 0} {
-    notice $nick "You currently owe money, you can't bank."
-  } elseif {$bank <= 0} {
-    notice $nick "You have to at least bank \$1.00."
-  } elseif {![isnum [string trim $bank "\$"]]} {
-    notice $nick "You need to provide a number/currency."
-  } elseif {[game_player_get $nick wallet] < $bank} {
-    notice $nick "You currently have \$[game_player_get $nick wallet].00 in your wallet, you can't bank \$$bank.00."
+
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't go to the bank."
   } else {
-    game_player_incr $nick bank $bank
-    game_player_decr $nick wallet $bank
-    msg $chan "0,1 ! 1,0 ! 0,1 B 1,0 A 0,1 N 1,0 K 0,1 ! 1,0 !  $nick has banked \$$bank.00, leaving \$[game_player_get $nick wallet].00 in their wallet."
+    if {[lindex $text 0] == ""} {
+      set bank [game_player_get $nick wallet]
+    } else {
+      set bank [string trim [lindex [split $text .] 0] "\$"]
+    }
+
+    if {[game_player_get $nick wallet] == 0} {
+      notice $nick "You currently have nothing in your wallet, you can't bank."
+    } elseif {[game_player_get $nick wallet] < 0} {
+      notice $nick "You currently owe money, you can't bank."
+    } elseif {$bank <= 0} {
+      notice $nick "You have to at least bank \$1.00."
+    } elseif {![isnum [string trim $bank "\$"]]} {
+      notice $nick "You need to provide a number/currency."
+    } elseif {[game_player_get $nick wallet] < $bank} {
+      notice $nick "You currently have \$[game_player_get $nick wallet].00 in your wallet, you can't bank \$$bank.00."
+    } else {
+      game_player_incr $nick bank $bank
+      game_player_decr $nick wallet $bank
+      msg $chan "0,1 ! 1,0 ! 0,1 B 1,0 A 0,1 N 1,0 K 0,1 ! 1,0 !  ::: $nick has banked \$$bank.00, leaving \$[game_player_get $nick wallet].00 in their wallet."
+    }
   }
 }
 
@@ -513,13 +602,21 @@ proc pub:rob {nick uhost handle chan text} {
   global game
   game_player_check $nick
   
-  if {[lindex $text 0] == ""} {
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't rob anyone!"
+  } elseif {[lindex $text 0] == ""} {
     notice $nick "Who are you trying to steal money from?"
   } else {
     if {[string tolower [lindex $text 0]] == [string tolower $nick]} {
       notice $nick "You can't steal from yourself, idiot."
     } elseif {![onchan [lindex $text 0] $chan]} {
       notice $nick "[lindex $text 0] isn't currently in the channel, how are you meant to steal money from them?!"
+    } elseif {[game_player_get [lindex $text 0] jail] > [clock seconds]} {
+      notice $nick "[lindex $text 0] is currently in jail, their wallet is locked up."
     } elseif {([game_player_get [lindex $text 0] wallet] <= 10) && ([game_player_get [lindex $text 0] bank] > 10)} {
       notice $nick "[lindex $text 0] is smart, they have banked all of their money!"
     } elseif {[game_player_get [lindex $text 0] wallet] <= 10} {
@@ -529,7 +626,7 @@ proc pub:rob {nick uhost handle chan text} {
     } else {
       set amount [rand [expr [game_player_get [lindex $text 0] wallet] / 2]]
       game_player_set [lindex $text 0] steal "[clock seconds] $chan $nick [lindex $text 0] $amount"
-      msg $chan "1,7 ! 7,1 ! 1,7 W 7,1 A 1,7 R 7,1 N 1,7 I 7,1 N 1,7 G 7,1 7,1 ! 1,7 !  4,1$nick is attempting to steal money from [lindex $text 0], quick someone help!!"
+      msg $chan "1,7 ! 7,1 ! 1,7 W 7,1 A 1,7 R 7,1 N 1,7 I 7,1 N 1,7 G 7,1 7,1 ! 1,7 !  ::: 4,1$nick is attempting to steal money from [lindex $text 0], quick someone help!!"
     }
   }
 }
@@ -537,6 +634,13 @@ proc pub:rob {nick uhost handle chan text} {
 proc game:pubm {nick uhost handle chan text} {
   global game
   
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
+  if {[string tolower $text] == ".police"} {
+    return
+  }
   if {[game_player_get $nick steal] != 0} {
     set info [game_player_get $nick steal]
     if {[string tolower [lindex $info 1]] == [string tolower $chan]} {
@@ -563,16 +667,23 @@ proc game:pubm {nick uhost handle chan text} {
 
 proc pub:bj {nick uhost handle chan text} {
   game_player_check $nick
+  array set search [checkswitch $text "" "override 0"]
   
-  if {[lindex $text 0] == ""} {
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
+  if {[lindex $search(text) 0] == ""} {
     set bet 10
   } else {
-    set bet [string trim [lindex [split $text .] 0] "\$"]
+    set bet [string trim [lindex [split $search(text) .] 0] "\$"]
   }
   
-  if {$bet <= 0} {
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't play any game."
+  } elseif {$bet <= 0} {
     notice $nick "You have to at least bet \$3.00."
-  } elseif {$bet > 500} {
+  } elseif {($bet > 500) && (!$search(override))} {
     notice $nick "You can only bet up to \$500.00."
   } elseif {![isnum [string trim $bet "\$"]]} {
     notice $nick "You need to provide a number/currency."
@@ -584,8 +695,9 @@ proc pub:bj {nick uhost handle chan text} {
     notice $nick "You are currently in a game, please finish that first. You are sitting at [game_bj_get_total [game_player_get $nick bj.cards]] \[[replace [game_player_get $nick bj.cards] " " ", "]\], dealer at [game_bj_get_total [game_player_get $nick bj.dealer]] \[[replace [game_player_get $nick bj.dealer] " " ", "]\]."
   } else {
     game_player_set $nick bj.bet $bet
-    game_player_set $nick bj.cards "[game_bj_get_card] [game_bj_get_card]"
-    game_player_set $nick bj.dealer [game_bj_get_card]
+    game_player_set $nick bj.deck "Ace(♥) Ace(♠) Ace(♣) Ace(♦) 2(♥) 2(♠) 2(♣) 2(♦) 3(♥) 3(♠) 3(♣) 3(♦) 4(♥) 4(♠) 4(♣) 4(♦) 5(♥) 5(♠) 5(♣) 5(♦) 6(♥) 6(♠) 6(♣) 6(♦) 7(♥) 7(♠) 7(♣) 7(♦) 8(♥) 8(♠) 8(♣) 8(♦) 9(♥) 9(♠) 9(♣) 9(♦) 10(♥) 10(♠) 10(♣) 10(♦) Jack(♥) Jack(♠) Jack(♣) Jack(♦) Queen(♥) Queen(♠) Queen(♣) Queen(♦) King(♥) King(♠) King(♣) King(♦)"
+    game_player_set $nick bj.cards "[game_bj_get_card $nick] [game_bj_get_card $nick]"
+    game_player_set $nick bj.dealer [game_bj_get_card $nick]
     game_player_decr $nick wallet $bet
     game_player_incr $nick spent $bet
 
@@ -601,7 +713,7 @@ proc pub:bj {nick uhost handle chan text} {
       set msg "$msg 1,4$nick wins \$[expr [game_player_get $nick bj.bet] * 2].00!!!"
       
     } elseif {[game_bj_get_total [game_player_get $nick bj.cards]] == 21} {
-      set card [game_bj_get_card]
+      set card [game_bj_get_card $nick]
       game_player_set $nick bj.dealer "[game_player_get $nick bj.dealer] $card"
       
       set msg "$msg $nick has blackjack!!"
@@ -631,10 +743,14 @@ proc pub:bj {nick uhost handle chan text} {
 proc pub:hit {nick uhost handle chan text} {
   game_player_check $nick
   
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
   if {[game_player_get $nick bj.cards] == 0} {
     notice $nick "You dont have a game currently running, idiot."
   } else {
-    set card [game_bj_get_card]
+    set card [game_bj_get_card $nick]
     game_player_set $nick bj.cards "[game_player_get $nick bj.cards] $card"
     set msg "1,4 ! 4,1 ! 1,4 B 4,1 L 1,4 A 4,1 C 1,4 K 4,1 J 1,4 A 4,1 C 1,4 K 4,1 ! 1,4 !  ::: $nick draws a $card \[[replace [game_player_get $nick bj.cards] " " ", "]\] ([game_bj_get_total [game_player_get $nick bj.cards]]) ::: "
 
@@ -653,6 +769,10 @@ proc pub:hit {nick uhost handle chan text} {
 proc pub:stand {nick uhost handle chan text} {
   game_player_check $nick
   
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
   if {[game_player_get $nick bj.cards] == 0} {
     notice $nick "You dont have a game currently running, idiot."
   } else {
@@ -665,6 +785,10 @@ proc pub:hangman {nick uhost handle chan text} {
   # choose a word
   # display the word
   # set a jackpot
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
   if {[game_get hm.[string tolower $chan].word] == 0} {
     notice $nick "Game already in progress."
   } else {
@@ -677,6 +801,134 @@ proc pub:guess {nick uhost handle chan text} {
 
 
 }
+
+proc pub:draw {nick uhost handle chan text} {
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
+  if {[lindex $text 0] == "-reset"} {
+    game_player_set $nick bj.deck "Ace(♥) Ace(♠) Ace(♣) Ace(♦) 2(♥) 2(♠) 2(♣) 2(♦) 3(♥) 3(♠) 3(♣) 3(♦) 4(♥) 4(♠) 4(♣) 4(♦) 5(♥) 5(♠) 5(♣) 5(♦) 6(♥) 6(♠) 6(♣) 6(♦) 7(♥) 7(♠) 7(♣) 7(♦) 8(♥) 8(♠) 8(♣) 8(♦) 9(♥) 9(♠) 9(♣) 9(♦) 10(♥) 10(♠) 10(♣) 10(♦) Jack(♥) Jack(♠) Jack(♣) Jack(♦) Queen(♥) Queen(♠) Queen(♣) Queen(♦) King(♥) King(♠) King(♣) King(♦)"
+    game_player_set $nick bj.cards ""
+  } else {
+    if {[lindex $text 0] == ""} {
+      set top 1
+    } else {
+      set top [lindex $text 0]
+    }
+    set cnt 1
+    while {$cnt <= $top} {
+      game_player_set $nick bj.cards "[game_player_get $nick bj.cards] [game_bj_get_card $nick]"
+      
+      incr cnt
+    }
+    
+    msg $chan "HAND: [game_player_get $nick bj.cards]"
+    msg $chan "DECK: [game_player_get $nick bj.deck]"
+  }
+}
+
+proc pub:welfare {nick uhost handle chan text} {
+  # .welfare [-<check>]
+  game_player_check $nick
+  
+  if {[lsearch "#melbourne #sydney" [string tolower $chan]] != -1} {
+    return
+  }
+
+  array set search [checkswitch $text "" "check 0"]
+  
+  if {[game_player_get $nick jail] > [clock seconds]} {
+    notice $nick "You are currently in jail, you can't collect welfare!"
+  } elseif {($search(check)) && ([game_player_get $nick welfare] == 0)} {
+    notice $nick "You are not currently applying for welfare payments.
+  } elseif {$search(check)} {
+    notice $nick "Your welfare cheque will come through in approximately [string tolower [duration [expr ([lindex [game_player_get $nick welfare] 1] - [clock seconds])] 2]]."
+  } elseif {([game_player_get $nick wallet] > 0) || ([game_player_get $nick bank] > 0)} {
+    notice $nick "You can't apply for welfare with \$[expr [game_player_get $nick wallet] + [game_player_get $nick bank]].00 to your name!"
+  } elseif {[game_player_get $nick welfare] != 0} {
+    msg $chan "10,7 ! 7,10 ! 1,8 W 1,3 E 1,9 L 1,10 F 1,9 A 1,3 R 1,8 E 7,10 ! 10,7 !  ::: $nick tried applying for welfare but are already getting payments! SO POOR!!"
+  } else {
+    game_player_set $nick welfare "[clock seconds] [expr [clock seconds] + 300] 50 $chan $nick"
+    msg $chan "10,7 ! 7,10 ! 1,8 W 1,3 E 1,9 L 1,10 F 1,9 A 1,3 R 1,8 E 7,10 ! 10,7 !  ::: $nick has applied for a welfare payment, as they are a broke ass!!"
+  }
+}
+
+
+proc pub:host {nick uhost handle chan text} {
+  # .host <nickname>
+  array set args [checkswitch $text "limit 1" "limit 20 inline 0"]
+  
+  if {[lindex $args(text) 0] == ""} {
+    notice $nick "Invalid request: You need to provide a nickname."
+  } else {
+    if {$args(limit) > 20} {
+      set args(limit) 20
+    }
+  
+    set hosts [seen_get_host [lindex $args(text) 0]]
+    
+    if {[llength $hosts] == 0} {
+      notice $nick "[lindex $args(text) 0] doesn't exist in the database."
+    } elseif {[llength $hosts] == 1} {
+      notice $nick "[lindex $args(text) 0] has only had one host: $hosts"
+    } elseif {$args(inline)} {
+    #450
+      set line ""
+      foreach host $hosts {
+        if {[string length [string trim "$line $host"]] > 450} {
+          set lines([llength [array names lines]]) [string trim $line]
+          set line ""
+        }
+        
+        set line "$line $host"
+      }
+      
+      if {[llength $line] > 0} {
+        set lines([llength [array names lines]]) [string trim $line]
+      }
+      
+      set cnt 1
+      foreach item [array names lines] {
+        notice $nick "\[$cnt/[llength [array names lines]]\] $lines($item)"
+        incr cnt
+      }
+      
+    } else {
+      notice $nick "*** Listing hosts for $args(text) \[Total: [llength $hosts] Limit: $args(limit)\] ***"
+      notice $nick "[align "" 5][align "UserHost" 35] | [align "" 5][align "UserHost" 35]"
+      set cnt 1
+      foreach host $hosts {
+        if {$cnt > $args(limit)} {
+          break
+        }
+        
+        if {[expr $cnt % 2] == 1} {
+          set tmp_msg "[align $cnt 5][align $host 35]"
+        } else {
+          notice $nick "$tmp_msg | [align $cnt 5]$host"
+          set tmp_msg ""
+        }
+        incr cnt 1
+      }
+      
+      if {$tmp_msg != ""} {
+        notice $nick "[align $cnt 5][align $host 35]"
+      }
+      
+      if {$args(limit) < [llength $hosts]} {
+        notice $nick "*** List has been truncated at $args(limit) results ***"
+      } else {
+        notice $nick "*** End of List ***"
+      }
+    }
+  }
+}
+
+
+
+
+
 
 
 

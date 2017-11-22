@@ -254,6 +254,18 @@ proc align {text num {char " "} {type "L"}} {
   }
 }
 
+proc lremove {text index} {
+  if {$index < 0} {
+    return $text
+  } elseif {$index == 0} {
+    return [lrange $text 1 end]
+  } elseif {$index == [llength $text]} {
+    return [lrange $text 0 [expr [llength $text] - 1]]
+  } else {
+    return "[lrange $text 0 [expr $index - 1]] [lrange $text [expr $index + 1] end]"
+  }
+}
+
 proc readline {file {line 0}} {
   if {$line == 0} {
     set line [rand [lines $file]]

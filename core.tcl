@@ -121,7 +121,9 @@ proc game_check {} {
   global game
   # go through the current robberies and see if any have expired
   foreach item [array names game *,steal] {
-    if {$game($item) == 0} {
+    if {$game($item) == ""} {
+      array unset game $item
+    } elseif {$game($item) == 0} {
       continue
     } elseif {[expr [lindex $game($item) 0] + 300] < [clock seconds]} {
       msg [lindex $game($item) 1] "[lindex $game($item) 2] has stolen \$[lindex $game($item) 4].00 from [lindex $game($item) 3]!!!!!!"
@@ -129,7 +131,26 @@ proc game_check {} {
       game_player_incr [lindex $game($item) 3] lost [lindex $game($item) 4]
       game_player_incr [lindex $game($item) 2] wallet [lindex $game($item) 4]
       game_player_incr [lindex $game($item) 2] stolen [lindex $game($item) 4]
-      array unset game $item
+      array unset game [replace [replace $item \[ \\\[] \] \\\]]
+    }
+  }
+  
+  foreach item [array names game *,welfare] {
+    if {$game($item) == 0} {
+      continue
+    } elseif {[lindex $game($item) 1] < [clock seconds]} {
+      msg [lindex $game($item) 3] "10,7 ! 7,10 ! 1,8 W 1,3 E 1,9 L 1,10 F 1,9 A 1,3 R 1,8 E 7,10 ! 10,7 !  ::: [lindex $game($item) 4]'s welfare payment has come through. \$[lindex $game($item) 2] has gone into their wallet!!"
+      game_player_incr [lindex $game($item) 4] wallet [lindex $game($item) 2]
+      array unset game [replace [replace $item \[ \\\[] \] \\\]]
+    }
+  }
+  
+  foreach item [array names game *,jail] {
+    if {$game($item) == 0} {
+      continue
+    } elseif {[lindex $game($item) 0] < [clock seconds]} {
+      msg [lindex $game($item) 1] "12,0 ! 0,12 ! 12,0 P 0,12 O 12,0 L 0,12 I 12,0 C 0,12 E 12,0 ! 0,12 !  ::: [lindex $game($item) 2] has been released from jail!!!"
+      array unset game [replace [replace $item \[ \\\[] \] \\\]]
     }
   }
   
@@ -363,59 +384,64 @@ proc joke_read {file} {
 }
 
 proc game_bj_play_dealer {nick chan} {
+  set msg "1,4 ! 4,1 ! 1,4 B 4,1 L 1,4 A 4,1 C 1,4 K 4,1 J 1,4 A 4,1 C 1,4 K 4,1 ! 1,4 !  ::: $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: "
+  
   while {[game_bj_get_total [game_player_get $nick bj.dealer]] < 16} {
-    if {[game_bj_get_total [game_player_get $nick bj.dealer]] > [game_bj_get_total [game_player_get $nick bj.cards]]} {
-      break
-    }
+#    if {[game_bj_get_total [game_player_get $nick bj.dealer]] > [game_bj_get_total [game_player_get $nick bj.cards]]} {
+#      break
+#    }
     
-    set card [game_bj_get_card]
+    set card [game_bj_get_card $nick]
     game_player_set $nick bj.dealer "[game_player_get $nick bj.dealer] $card"
   }
   
-  set msg "1,4 ! 4,1 ! 1,4 B 4,1 L 1,4 A 4,1 C 1,4 K 4,1 J 1,4 A 4,1 C 1,4 K 4,1 ! 1,4 !  :::"
   
   if {([game_bj_get_total [game_player_get $nick bj.dealer]] == 21) && ([game_bj_get_total [game_player_get $nick bj.cards]] == 21)} {
-    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4DRAW!!!"
+    msg $chan "$msg dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4DRAW!!!"
     game_player_win $nick [game_player_get $nick bj.bet]
     game_player_set $nick bj.cards 0
     
   } elseif {[game_bj_get_total [game_player_get $nick bj.dealer]] == 21} {
-    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4$nick LOSES!!!"
+    msg $chan "$msg dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4$nick LOSES!!!"
     game_player_set $nick bj.cards 0
     
   } elseif {[game_bj_get_total [game_player_get $nick bj.dealer]] > 21} {
-    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer went bust :::  1,4$nick WINS \$[expr [game_player_get $nick bj.bet] * 2].00!!!!"
+    msg $chan "$msg dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer went bust :::  1,4$nick WINS \$[expr [game_player_get $nick bj.bet] * 2].00!!!!"
     game_player_win $nick [expr [game_player_get $nick bj.bet] * 2]
     game_player_set $nick bj.cards 0
     
   } elseif {[game_bj_get_total [game_player_get $nick bj.dealer]] == [game_bj_get_total [game_player_get $nick bj.cards]]} {
-    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4DRAW!!"
+    msg $chan "$msg dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4DRAW!!"
     game_player_win $nick [expr [game_player_get $nick bj.bet] * 2]
     game_player_set $nick bj.cards 0
     
   } elseif {[game_bj_get_total [game_player_get $nick bj.dealer]] > [game_bj_get_total [game_player_get $nick bj.cards]]} {
-    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4$nick LOSES!!"
+    msg $chan "$msg dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4$nick LOSES!!"
     game_player_set $nick bj.cards 0
     
   } else {
-    msg $chan "$msg $nick, dealer had [lindex [game_player_get $nick bj.dealer] 0] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4$nick WINS \$[expr [game_player_get $nick bj.bet] * 2].00!!"
+    msg $chan "$msg dealer drew [replace [lrange [game_player_get $nick bj.dealer] 1 end] " " ", "] ([game_bj_get_total [game_player_get $nick bj.dealer]]) ::: 1,4$nick WINS \$[expr [game_player_get $nick bj.bet] * 2].00!!"
     game_player_win $nick [expr [game_player_get $nick bj.bet] * 2]
     game_player_set $nick bj.cards 0
   }
 }
 
-proc game_bj_get_card {} {
-  return [game_num_to_card [expr [rand 13] + 1]]
+proc game_bj_get_card {nick} {
+  set index [rand [llength [game_player_get $nick bj.deck]]]
+  set card [lindex [game_player_get $nick bj.deck] $index]
+  game_player_set $nick bj.deck [lremove [game_player_get $nick bj.deck] $index]
+  return $card
 }
 
 proc game_bj_get_total {cards} {
   set total 0
   set held ""
   foreach card $cards {
-    if {[string tolower $card] == "ace"} {
+    set c [lindex [split $card "("] 0]
+    if {[string tolower $c] == "ace"} {
       set held "$held $card"
     } else {
-      incr total [game_card_to_num $card]
+      incr total [game_card_to_num $c]
     }
   }
   
@@ -458,6 +484,33 @@ proc game_num_to_card {num} {
   }
 }
 
+proc seen_get_host {nick} {
+  global seen
+  set hosts ""
+  foreach item [array names seen *,[string tolower $nick],*,*] {
+    set host [lindex [split [lindex [data_tidy $seen($item)] 0] !] 1]
+    if {($host != "") && ([lsearch -exact [string tolower $hosts] [string tolower $host]] == -1)} {
+      set hosts "$hosts $host"
+    }
+  }
+  
+  return [data_tidy [string trim $hosts] 1]
+}
+
 game_check
 
 stupid_autosave
+
+
+
+
+
+
+
+
+
+
+
+
+
+
