@@ -225,7 +225,7 @@ proc pub:rank {nick uhost handle chan text} {
   if {($user_rank == -1) && ($user != "*")} {
     notice $nick "$user was not found in the database."
   } elseif {$user != "*" && (!$search(list))} {
-    notice $nick "Found [game_player_get [lindex $search(text) 0] nick] ranked #[expr $user_rank + 1] with \$[expr [game_player_get [lindex $search(text) 0] wallet] + [game_player_get [lindex $search(text) 0] bank]].00."
+    notice $nick "Found [game_player_get [lindex $search(text) 0] nick] ranked #[expr $user_rank + 1] with \$[comma [expr [game_player_get [lindex $search(text) 0] wallet] + [game_player_get [lindex $search(text) 0] bank]]].00."
   } else {
     if {$search(top) > 20} {
       set start 0
@@ -258,7 +258,7 @@ proc pub:rank {nick uhost handle chan text} {
         set highlight ""
       }
 
-      notice $nick "$highlight[align [expr $cnt + 1] 5] [align $luser 19] [align \$[game_player_get $luser wallet].00 15 " " R ] [align \$[game_player_get $luser bank].00 15 " " R ] [align \$$ltotal.00 15 " " R ]"
+      notice $nick "$highlight[align [expr $cnt + 1] 5] [align $luser 19] [align \$[comma [game_player_get $luser wallet]].00 15 " " R ] [align \$[comma [game_player_get $luser bank]].00 15 " " R ] [align \$[comma $ltotal].00 15 " " R ]"
 
       incr cnt
       incr total
@@ -283,7 +283,7 @@ proc pub:give {nick uhost handle chan text} {
     notice $nick "You need to provide a number/currency."
   } else {
     game_player_incr [lindex $text 0] wallet $cash
-    msg $chan "% $nick (admin) gave [lindex $text 0] \$$cash.00."
+    msg $chan "% $nick (admin) gave [lindex $text 0] \$[comma $cash].00."
   }
 }
 
@@ -358,7 +358,7 @@ proc pub:roll {nick uhost handle chan text} {
     if {$win == 0} {
       set msg "$msg $nick lost!"
     } else {
-      set msg "$msg $nick just won \$$win.00 ::: $slang!!!"
+      set msg "$msg $nick just won \$[comma $win].00 ::: $slang!!!"
       game_player_win $nick $win
     }
     
@@ -450,7 +450,7 @@ proc pub:spin {nick uhost handle chan text} {
     }
 
     # set the start message
-    set msg "1,10 ! 1,5 ! 1,6 P 1,9 O 0,4 K 0,1 I 1,11 E 1,7 S 4,3 ! 1,8 !  ::: \[\$[game_get jackpot].00\] ::: \[ $item(1) | $item(2) | $item(3) \] :::"
+    set msg "1,10 ! 1,5 ! 1,6 P 1,9 O 0,4 K 0,1 I 1,11 E 1,7 S 4,3 ! 1,8 !  ::: \[\$[comma [game_get jackpot]].00\] ::: \[ $item(1) | $item(2) | $item(3) \] :::"
 
     # it costs $1
     game_player_incr $nick spent 1
@@ -458,7 +458,7 @@ proc pub:spin {nick uhost handle chan text} {
 
     if {($item(1) == $item(2)) && ($item(2) == $item(3))} {
       # we have a winner!
-      set msg "$msg 0 1,8 J 1,4 A 1,9 C 1,7 K 1,13 P 1,11 O 1,5 T  !!! $nick just won \$[game_get jackpot].00!!!"
+      set msg "$msg 0 1,8 J 1,4 A 1,9 C 1,7 K 1,13 P 1,11 O 1,5 T  !!! $nick just won \$[comma [game_get jackpot]].00!!!"
       game_player_win $nick [game_get jackpot]
       game_set jackpot [rand 200]
     } else {
@@ -471,7 +471,7 @@ proc pub:spin {nick uhost handle chan text} {
     set bonus [rand 1000]
     if {$bonus < 100} {
       # add in a bonus if we get a random number less than 100
-      msg $chan "1,9 ! 9,1 ! 1,9 B 9,1 O 1,9 N 9,1 U 1,9 S 9,1 ! 1,9 !  ::: AN EXTRA \$$bonus.00 HAS BEEN ADDED TO THE JACKPOT!!!"
+      msg $chan "1,9 ! 9,1 ! 1,9 B 9,1 O 1,9 N 9,1 U 1,9 S 9,1 ! 1,9 !  ::: AN EXTRA \$[comma $bonus].00 HAS BEEN ADDED TO THE JACKPOT!!!"
       game_incr jackpot $bonus
     }
   }
@@ -482,7 +482,7 @@ proc pub:jackpot {nick uhost handle chan text} {
     return
   }
 
-  notice $nick "Current Jackpot:\[\$[game_get jackpot].00\] Last Jackpot:\[\$[game_get last.jackpot].00\] Last Winner:\[[game_get last.winner]\] Total Winners:\[[game_get total.winners]\] Total Winnings:\[\$[game_get total.jackpot].00\]"
+  notice $nick "Current Jackpot:\[\$[comma [game_get jackpot]].00\] Last Jackpot:\[\$[comma [game_get last.jackpot]].00\] Last Winner:\[[game_get last.winner]\] Total Winners:\[[game_get total.winners]\] Total Winnings:\[\$[comma [game_get total.jackpot]].00\]"
 }
 
 proc pub:cash {nick uhost handle chan text} {
@@ -499,7 +499,7 @@ proc pub:cash {nick uhost handle chan text} {
     set user [lindex $text 0]
   }
   
-  notice $nick "Amount Won:\[\$[game_player_get $user won].00\] Amount Spent:\[\$[game_player_get $user spent].00\] Wallet:\[\$[game_player_get $user wallet].00\] Bank:\[\$[game_player_get $user bank].00\]"
+  notice $nick "Amount Won:\[\$[comma [game_player_get $user won]].00\] Amount Spent:\[\$[comma [game_player_get $user spent]].00\] Wallet:\[\$[comma [game_player_get $user wallet]].00\] Bank:\[\$[comma [game_player_get $user bank]].00\]"
 }
 
 proc pub:profile {nick uhost handle chan text} {
@@ -517,9 +517,9 @@ proc pub:profile {nick uhost handle chan text} {
   }
   
   notice $nick "|[align " Player Information for $user " 62 "-" C]|"
-  notice $nick "| In-Wallet : \$[align [game_player_get $user wallet].00 15] | In-Bank   : \$[align [game_player_get $user bank].00 15] |"
-  notice $nick "| Bet       : \$[align [game_player_get $user spent].00 15] | Winnings  : \$[align [game_player_get $user won].00 15] |"
-  notice $nick "| Lost      : \$[align [game_player_get $user lost].00 15] | Stolen    : \$[align [game_player_get $user stolen].00 15] |"
+  notice $nick "| In-Wallet : \$[comma [align [game_player_get $user wallet]].00 15] | In-Bank   : \$[comma [align [game_player_get $user bank]].00 15] |"
+  notice $nick "| Bet       : \$[comma [align [game_player_get $user spent]].00 15] | Winnings  : \$[comma [align [game_player_get $user won]].00 15] |"
+  notice $nick "| Lost      : \$[comma [align [game_player_get $user lost]].00 15] | Stolen    : \$[comma [align [game_player_get $user stolen]].00 15] |"
   if {[expr [game_player_get $user jail] - [clock seconds]] > 0} {
     notice $nick "| [align "[game_player_get $user nick] is in jail for [string tolower [duration [expr ([game_player_get $user jail] - [clock seconds])] 2]]." 59] |"
   }
@@ -554,11 +554,11 @@ proc pub:withdraw {nick uhost handle chan text} {
     } elseif {![isnum $withdraw]} {
       notice $nick "You need to provide a number/currency."
     } elseif {$withdraw > [game_player_get $nick bank]} {
-      notice $nick "You currently have \$[game_player_get $nick bank].00 in your bank, you can't withdraw \$$withdraw.00."
+      notice $nick "You currently have \$[comma [game_player_get $nick bank]].00 in your bank, you can't withdraw \$[comma $withdraw].00."
     } else {
       game_player_incr $nick wallet $withdraw
       game_player_decr $nick bank $withdraw
-      msg $chan "0,1 ! 1,0 ! 0,1 B 1,0 A 0,1 N 1,0 K 0,1 ! 1,0 !  ::: $nick has withdrawn \$$withdraw.00, leaving \$[game_player_get $nick bank].00 in their bank."
+      msg $chan "0,1 ! 1,0 ! 0,1 B 1,0 A 0,1 N 1,0 K 0,1 ! 1,0 !  ::: $nick has withdrawn \$[comma $withdraw].00, leaving \$[comma [game_player_get $nick bank]].00 in their bank."
     }
   }
 }
@@ -589,11 +589,11 @@ proc pub:bank {nick uhost handle chan text} {
     } elseif {![isnum [string trim $bank "\$"]]} {
       notice $nick "You need to provide a number/currency."
     } elseif {[game_player_get $nick wallet] < $bank} {
-      notice $nick "You currently have \$[game_player_get $nick wallet].00 in your wallet, you can't bank \$$bank.00."
+      notice $nick "You currently have \$[comma [game_player_get $nick wallet]].00 in your wallet, you can't bank \$[comma $bank].00."
     } else {
       game_player_incr $nick bank $bank
       game_player_decr $nick wallet $bank
-      msg $chan "0,1 ! 1,0 ! 0,1 B 1,0 A 0,1 N 1,0 K 0,1 ! 1,0 !  ::: $nick has banked \$$bank.00, leaving \$[game_player_get $nick wallet].00 in their wallet."
+      msg $chan "0,1 ! 1,0 ! 0,1 B 1,0 A 0,1 N 1,0 K 0,1 ! 1,0 !  ::: $nick has banked \$[comma $bank].00, leaving \$[comma [game_player_get $nick wallet]].00 in their wallet."
     }
   }
 }
@@ -657,7 +657,7 @@ proc game:pubm {nick uhost handle chan text} {
         set drop [game_player_get [lindex $info 2] wallet]
         game_player_decr [lindex $info 2] wallet $drop
         game_player_decr [lindex $info 2] lost $drop
-        msg $chan "4,1\002[lindex $info 2]\002 dropped \$$drop.00 as they were running away!"
+        msg $chan "4,1\002[lindex $info 2]\002 dropped \$[comma $drop].00 as they were running away!"
       }
 
       game_player_set $nick steal 0
@@ -710,7 +710,7 @@ proc pub:bj {nick uhost handle chan text} {
     } elseif {([game_bj_get_total [game_player_get $nick bj.cards]] == 21) && ([game_bj_get_total [game_player_get $nick bj.dealer]] < 10)} {
       game_player_set $nick bj.cards 0
       game_player_win $nick [expr [game_player_get $nick bj.bet] * 2]
-      set msg "$msg 1,4$nick wins \$[expr [game_player_get $nick bj.bet] * 2].00!!!"
+      set msg "$msg 1,4$nick wins \$[comma [expr [game_player_get $nick bj.bet] * 2]].00!!!"
       
     } elseif {[game_bj_get_total [game_player_get $nick bj.cards]] == 21} {
       set card [game_bj_get_card $nick]
@@ -728,9 +728,9 @@ proc pub:bj {nick uhost handle chan text} {
         game_player_set $nick bj.cards 0
         game_player_win $nick [expr [game_player_get $nick bj.bet] * 2]
         
-        set msg "$msg dealer draws $card, dealer got bust! 1,4$nick wins \$[expr [game_player_get $nick bj.bet] * 2].00!!!"
+        set msg "$msg dealer draws $card, dealer got bust! 1,4$nick wins \$[comma [expr [game_player_get $nick bj.bet] * 2]].00!!!"
       } else {
-        set msg "$msg dealer couldnt match, 1,4$nick wins \$[expr [game_player_get $nick bj.bet] * 2].00!!!"
+        set msg "$msg dealer couldnt match, 1,4$nick wins \$[comma [expr [game_player_get $nick bj.bet] * 2]].00!!!"
         game_player_set $nick bj.cards 0
         game_player_win $nick [expr [game_player_get $nick bj.bet] * 2]
       }
@@ -845,7 +845,7 @@ proc pub:welfare {nick uhost handle chan text} {
   } elseif {$search(check)} {
     notice $nick "Your welfare cheque will come through in approximately [string tolower [duration [expr ([lindex [game_player_get $nick welfare] 1] - [clock seconds])] 2]]."
   } elseif {([game_player_get $nick wallet] > 0) || ([game_player_get $nick bank] > 0)} {
-    notice $nick "You can't apply for welfare with \$[expr [game_player_get $nick wallet] + [game_player_get $nick bank]].00 to your name!"
+    notice $nick "You can't apply for welfare with \$[comma [expr [game_player_get $nick wallet] + [game_player_get $nick bank]]].00 to your name!"
   } elseif {[game_player_get $nick welfare] != 0} {
     msg $chan "10,7 ! 7,10 ! 1,8 W 1,3 E 1,9 L 1,10 F 1,9 A 1,3 R 1,8 E 7,10 ! 10,7 !  ::: $nick tried applying for welfare but are already getting payments! SO POOR!!"
   } else {

@@ -13,6 +13,12 @@ proc isnum {num} {
   return 1
 }
 
+# from http://wiki.tcl.tk/5000
+proc comma { num {sep ,} } {
+    while {[regsub {^([-+]?\d+)(\d\d\d)} $num "\\1$sep\\2" num]} {}
+    return $num
+}
+
 ### checkswitch: checkswitch <text> <switches> <defaults>
 # - 'switches' should only include switches with arguments -- 1 (num); 2 (text)
 # Will check 'text' for any 'switches' and return an array of results.
